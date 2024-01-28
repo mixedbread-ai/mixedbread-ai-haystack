@@ -86,6 +86,7 @@ class MixedbreadAiTextEmbedder:
             base_url=base_url,
             verify_ssl=verify_ssl,
             timeout=timeout,
+            raise_for_status=True,
             headers={
                 "User-Agent": "@mixedbread-ai/integrations-haystack",
                 **(custom_headers or {}),
@@ -121,18 +122,23 @@ class MixedbreadAiTextEmbedder:
             raise TypeError(msg)
 
         text_to_embed = self.prefix + text + self.suffix
-        resp = self._client.embeddings(
+        res = self._client.embeddings(
             model=self.model_name,
             input=text_to_embed,
             instruction=self.instruction,
             normalized=self.normalized,
         )
+        if res is None:
+            raise ValueError("MixedbreadAiTextEmbedder received an empty response.")
+        if "message" in res:
+            raise ValueError(
+                f"MixedbreadAiTextEmbedder recieved an unexpected response. Code: {res['code']} Message: {res['message']}")
 
-        embedding = resp.data[0].embedding
+        embedding = res.data[0].embedding
         metadata = MixedBreadAiTextEmbedderMeta(
             model=self.model_name,
-            usage=resp.usage,
-            truncated=resp.data[0].truncated,
+            usage=res.usage,
+            truncated=res.data[0].truncated,
             normalized=self.normalized,
         )
 

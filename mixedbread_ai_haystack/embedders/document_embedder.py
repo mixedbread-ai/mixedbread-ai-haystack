@@ -1,9 +1,10 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from mixedbread_ai import MixedbreadAi, models
-from tqdm import tqdm
 from haystack import Document, component, default_to_dict
+from tqdm import tqdm
+
+from mixedbread_ai import MixedbreadAi, models
 
 
 class MixedbreadAiDocumentEmbedderMeta:
@@ -22,6 +23,7 @@ class MixedbreadAiDocumentEmbedderMeta:
     truncated: bool
     normalized: bool
     document_meta: List[Dict[str, Any]]
+
 
 @component
 class MixedbreadAiDocumentEmbedder:
@@ -84,7 +86,6 @@ class MixedbreadAiDocumentEmbedder:
                 "MixedbreadAiDocumentEmbedder requires an API key to be provided. "
                 "Set the MIXEDBREAD_API_KEY environment variable (recommended) or pass it explicitly."
             )
-
         self.model_name = model
         self.prefix = prefix
         self.suffix = suffix
@@ -99,6 +100,7 @@ class MixedbreadAiDocumentEmbedder:
             base_url=base_url,
             verify_ssl=verify_ssl,
             timeout=timeout,
+            raise_for_status=True,
             headers={
                 "User-Agent": "@mixedbread-ai/integrations-haystack",
                 **(custom_headers or {}),
@@ -106,6 +108,7 @@ class MixedbreadAiDocumentEmbedder:
         )
 
         # Other necessary imports remain the same
+
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
         Data that is sent for usage analytics, if applicable.
@@ -139,7 +142,8 @@ class MixedbreadAiDocumentEmbedder:
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             text_to_embed = (
-                    self.prefix + self.embedding_separator.join([*meta_values_to_embed, doc.content or ""]) + self.suffix
+                    self.prefix + self.embedding_separator.join(
+                [*meta_values_to_embed, doc.content or ""]) + self.suffix
             )
             texts_to_embed.append(text_to_embed)
         return texts_to_embed
@@ -156,19 +160,19 @@ class MixedbreadAiDocumentEmbedder:
         for i in tqdm(
                 range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
-            batch = texts_to_embed[i : i + batch_size]
-            print(models.EmbeddingsRequest(
-                model=self.model_name,
-                input_=batch,
-                instruction=self.instruction,
-                normalized=self.normalized,
-            ))
+            batch = texts_to_embed[i: i + batch_size]
             res = self._client.embeddings(
                 model=self.model_name,
                 input=batch,
                 instruction=self.instruction,
                 normalized=self.normalized,
             )
+            if res is None:
+                raise ValueError("MixedbreadAiDocumentEmbedder received an empty response.")
+            if "message" in res:
+                raise ValueError(
+                    f"MixedbreadAiDocumentEmbedder recieved an unexpected response. Code: {res['code']} Message: {res['message']}")
+
             sorted_embeddings = sorted(res.data, key=lambda e: e.index)
 
             metadata = {
