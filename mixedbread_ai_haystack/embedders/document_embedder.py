@@ -12,9 +12,9 @@ class MixedbreadAiDocumentEmbedderMeta:
     TypedDict for the meta attribute in MixedbreadAiDocumentEmbedder response.
 
     Attributes:
-        model: The name of the model used for the embedding.
+        model: The name of the models used for the embedding.
         usage: Detailed information about the usage of tokens.
-        truncated: Whether the input text was truncated or not (if the text was too long for the model).
+        truncated: Whether the input text was truncated or not (if the text was too long for the models).
         document_meta: Information for each embedding, if it was truncated or not.
     """
 
@@ -49,7 +49,7 @@ class MixedbreadAiDocumentEmbedder:
 
     def __init__(
             self,
-            model: str = "UAE-Large-V1",
+            model: str = "mixedbread-ai/mxbai-embed-large-v1",
             prefix: str = "",
             suffix: str = "",
             normalized: bool = False,
@@ -68,11 +68,11 @@ class MixedbreadAiDocumentEmbedder:
         Create a MixedbreadAiDocumentEmbedder component.
         :param api_key: The mixedbread.ai API key. It can be explicitly provided or automatically read from the
             environment variable MIXEDBREAD_API_KEY.
-        :param model: The name of the mixedbread.ai model to use. Check the list of available models on `https://mixedbread.ai/docs/models/embeddings/`
+        :param model: The name of the mixedbread.ai models to use. Check the list of available models on `https://mixedbread.ai/docs/models/embeddings/`
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param normalized: Whether to normalize the embeddings or not.
-        :param instruction: Instruction to show to the user when using the model.
+        :param instruction: Instruction to show to the user when using the models.
         :param custom_headers: Custom headers to add to the requests sent to the mixedbread.ai API.
         :param batch_size: Number of Documents to encode at once.
         :param progress_bar: Whether to show a progress bar or not.
@@ -113,7 +113,7 @@ class MixedbreadAiDocumentEmbedder:
         """
         Data that is sent for usage analytics, if applicable.
         """
-        return {"model": self.model_name}
+        return {"models": self.model_name}
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -176,7 +176,7 @@ class MixedbreadAiDocumentEmbedder:
             sorted_embeddings = sorted(res.data, key=lambda e: e.index)
 
             metadata = {
-                "model": self.model_name,
+                "models": self.model_name,
                 "usage": res.usage,
                 "normalized": self.normalized,
                 "document_meta": [],

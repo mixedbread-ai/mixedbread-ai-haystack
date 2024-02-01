@@ -10,9 +10,9 @@ class MixedBreadAiTextEmbedderMeta(TypedDict):
     TypedDict for the meta attribute in MixedbreadAiTextEmbedder response.
 
     Attributes:
-        model: The name of the model used for the embedding.
+        model: The name of the models used for the embedding.
         usage: Detailed information about the usage of tokens.
-        truncated: Whether the input text was truncated or not (if the text was too long for the model).
+        truncated: Whether the input text was truncated or not (if the text was too long for the models).
     """
     model: str
     usage: models.ModelUsage
@@ -38,7 +38,7 @@ class MixedbreadAiTextEmbedder:
     # {
     #    'embedding': [0.06069..., -0.123456..., ...],
     #    'meta': {
-    #           'model': 'UAE-Large-V1',
+    #           'models': 'mixedbread-ai/mxbai-embed-large-v1',
     #           'usage': {'prompt_tokens': 420, 'total_tokens': 420}
     #           'truncated': False,
     #           'normalized': True
@@ -48,7 +48,7 @@ class MixedbreadAiTextEmbedder:
 
     def __init__(
             self,
-            model: str = "UAE-Large-V1",
+            model: str = "mixedbread-ai/mxbai-embed-large-v1",
             prefix: str = "",
             suffix: str = "",
             normalized: bool = True,
@@ -62,7 +62,7 @@ class MixedbreadAiTextEmbedder:
         """
         Create a MixedBreadTextEmbedder component.
 
-        :param model: The name of the MixedBread model to use. Check the list of available models on `https://mixedbread.ai/docs/models/embeddings/`
+        :param model: The name of the MixedBread models to use. Check the list of available models on `https://mixedbread.ai/docs/models/embeddings/`
         :param prefix: A string to add to the beginning of each text.
         :param suffix: A string to add to the end of each text.
         :param normalized: Whether to normalize the embeddings or not.
@@ -72,8 +72,8 @@ class MixedbreadAiTextEmbedder:
         :param timeout: Timeout for the MixedBread API request.
         :param verify_ssl: Whether to verify the SSL certificate for the MixedBread API request.
         :param custom_headers: Custom headers to add to the requests sent to the mixedbread.ai API.
-        :param instruction: Used to specify the instruction for the model. Can only be used with instruction based models like e5-large-v2
-        for example. If not specified, the default instruction for the model will be used.
+        :param instruction: Used to specify the instruction for the models. Can only be used with instruction based models like e5-large-v2
+        for example. If not specified, the default instruction for the models will be used.
         """
 
         self.model_name = model
@@ -97,7 +97,7 @@ class MixedbreadAiTextEmbedder:
         """
         Data that is sent to Posthog for usage analytics.
         """
-        return {"model": self.model_name}
+        return {"models": self.model_name}
 
     def to_dict(self) -> Dict[str, Any]:
         """
