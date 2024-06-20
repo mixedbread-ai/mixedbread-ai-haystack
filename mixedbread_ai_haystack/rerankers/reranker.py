@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, override
+from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_to_dict, logging
 from mixedbread_ai.types import RerankingResponse
@@ -53,7 +53,6 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         self.top_k = top_k
         self.meta_fields_to_rank = meta_fields_to_rank or []
 
-    @override
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.

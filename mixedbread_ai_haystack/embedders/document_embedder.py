@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any, override
+from typing import Optional, List, Dict, Any
 
 from haystack import component, Document, default_to_dict
 from mixedbread_ai import Usage
@@ -72,7 +72,6 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         """
         return from_dict(cls, data)
 
-    @override
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
@@ -112,7 +111,6 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
 
         return [self.prefix + prepare_doc(doc) + self.suffix for doc in docs]
 
-    @override
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document], prompt: Optional[str] = None) -> Dict[str, Any]:
         """

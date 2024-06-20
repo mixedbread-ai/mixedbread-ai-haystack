@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, override
+from typing import Any, Dict, List, Optional
 
 from haystack import component, default_to_dict
 from mixedbread_ai import EncodingFormat, TruncationStrategy
@@ -81,7 +81,6 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
         """
         return from_dict(cls, data)
 
-    @override
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes the component to a dictionary.
