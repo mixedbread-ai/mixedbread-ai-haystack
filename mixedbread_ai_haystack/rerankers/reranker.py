@@ -83,7 +83,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         """
         return from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict[str, Any]:
         """
         Uses the Mixedbread Reranker to re-rank the list of documents based on the query.
