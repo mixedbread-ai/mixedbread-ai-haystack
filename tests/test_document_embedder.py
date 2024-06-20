@@ -1,102 +1,163 @@
+import os
 from unittest.mock import patch
-
 import pytest
 from haystack import Document
+from haystack.utils import Secret
+from mixedbread_ai import EncodingFormat, TruncationStrategy, ObjectType
 
-from mixedbread_ai import models, types
-from mixedbread_ai_haystack.embedders import MixedbreadAiDocumentEmbedder
+from mixedbread_ai.types import Usage
+from mixedbread_ai_haystack.embedders import MixedbreadAIDocumentEmbedder
 from .utils import mock_embeddings_response
 
 DEFAULT_VALUES = {
-    "model": "UAE-Large-V1",
+    "base_url": None,
+    "timeout": 60.0,
+    "max_retries": 3,
+    "use_async_client": False,
+    "model": "mixedbread-ai/mxbai-embed-large-v1",
     "prefix": "",
     "suffix": "",
+    "normalized": True,
+    "encoding_format": EncodingFormat.FLOAT,
+    "truncation_strategy": TruncationStrategy.START,
+    "dimensions": None,
+    "prompt": None,
     "batch_size": 128,
-    "progress_bar": True,
-    "meta_fields_to_embed": [],
+    "show_progress_bar": True,
     "embedding_separator": "\n",
-    "instruction": None,
-    "normalized": False,
+    "meta_fields_to_embed": [],
 }
 
 
-class TestMixedbreadAiDocumentEmbedder:
+class TestMixedbreadAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
-        monkeypatch.setenv("MIXEDBREAD_API_KEY", "fake-api-key")
-        embedder = MixedbreadAiDocumentEmbedder()
+        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
+        embedder = MixedbreadAIDocumentEmbedder()
 
-        assert embedder.model_name == DEFAULT_VALUES["model"]
+        assert embedder.api_key == Secret.from_env_var("MXBAI_API_KEY")
+        assert embedder.base_url == DEFAULT_VALUES["base_url"]
+        assert embedder.timeout == DEFAULT_VALUES["timeout"]
+        assert embedder.max_retries == DEFAULT_VALUES["max_retries"]
+        assert embedder.use_async_client == DEFAULT_VALUES["use_async_client"]
+
+        assert embedder.model == DEFAULT_VALUES["model"]
         assert embedder.prefix == DEFAULT_VALUES["prefix"]
         assert embedder.suffix == DEFAULT_VALUES["suffix"]
-        assert embedder.batch_size == DEFAULT_VALUES["batch_size"]
-        assert embedder.progress_bar is DEFAULT_VALUES["progress_bar"]
-        assert embedder.meta_fields_to_embed == DEFAULT_VALUES["meta_fields_to_embed"]
-        assert embedder.embedding_separator == DEFAULT_VALUES["embedding_separator"]
-        assert embedder.instruction == DEFAULT_VALUES["instruction"]
         assert embedder.normalized == DEFAULT_VALUES["normalized"]
+        assert embedder.encoding_format == DEFAULT_VALUES["encoding_format"]
+        assert embedder.truncation_strategy == DEFAULT_VALUES["truncation_strategy"]
+        assert embedder.dimensions == DEFAULT_VALUES["dimensions"]
+        assert embedder.prompt == DEFAULT_VALUES["prompt"]
+
+        assert embedder.batch_size == DEFAULT_VALUES["batch_size"]
+        assert embedder.show_progress_bar == DEFAULT_VALUES["show_progress_bar"]
+        assert embedder.embedding_separator == DEFAULT_VALUES["embedding_separator"]
+        assert embedder.meta_fields_to_embed == DEFAULT_VALUES["meta_fields_to_embed"]
 
     def test_init_with_parameters(self):
-        embedder = MixedbreadAiDocumentEmbedder(
-            api_key="fake-api-key",
+        embedder = MixedbreadAIDocumentEmbedder(
+            api_key=Secret.from_token("test-api-key"),
+            base_url="http://example.com",
+            timeout=50.0,
+            max_retries=10,
+            use_async_client=True,
+
             model="model",
             prefix="prefix",
             suffix="suffix",
+            normalized=False,
+            encoding_format=EncodingFormat.BINARY,
+            truncation_strategy=TruncationStrategy.END,
+            dimensions=500,
+            prompt="prompt",
+
             batch_size=64,
-            progress_bar=False,
-            meta_fields_to_embed=["test_field"],
+            show_progress_bar=False,
             embedding_separator=" | ",
-            instruction="instruction",
-            normalized=True,
+            meta_fields_to_embed=["test_field"],
         )
-        assert embedder.model_name == "model"
+
+        assert embedder.api_key == Secret.from_token("test-api-key")
+        assert embedder.base_url == "http://example.com"
+        assert embedder.timeout == 50.0
+        assert embedder.max_retries == 10
+        assert embedder.use_async_client
+
+        assert embedder.model == "model"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
+        assert not embedder.normalized
+        assert embedder.encoding_format == EncodingFormat.BINARY
+        assert embedder.truncation_strategy == TruncationStrategy.END
+        assert embedder.dimensions == 500
+        assert embedder.prompt == "prompt"
+
         assert embedder.batch_size == 64
-        assert embedder.progress_bar is False
-        assert embedder.meta_fields_to_embed == ["test_field"]
+        assert not embedder.show_progress_bar
         assert embedder.embedding_separator == " | "
-        assert embedder.instruction == "instruction"
-        assert embedder.normalized is True
+        assert embedder.meta_fields_to_embed == ["test_field"]
 
     def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("MIXEDBREAD_API_KEY", raising=False)
+        monkeypatch.delenv("MXBAI_API_KEY", raising=False)
         with pytest.raises(ValueError):
-            MixedbreadAiDocumentEmbedder()
+            MixedbreadAIDocumentEmbedder()
 
-    def test_to_dict(self):
-        component = MixedbreadAiDocumentEmbedder(api_key="fake-api-key")
+    def test_to_dict(self, monkeypatch):
+        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
+        component = MixedbreadAIDocumentEmbedder()
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAiDocumentEmbedder",
-            "init_parameters": DEFAULT_VALUES,
+            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAIDocumentEmbedder",
+            "init_parameters": {
+                **DEFAULT_VALUES,
+                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict()
+            }
         }
 
-    def test_to_dict_with_custom_init_parameters(self):
-        component = MixedbreadAiDocumentEmbedder(
-            api_key="fake-api-key",
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
+        component = MixedbreadAIDocumentEmbedder(
+            base_url="http://example.com",
+            timeout=50.0,
+            max_retries=10,
+            use_async_client=True,
+
             model="model",
             prefix="prefix",
             suffix="suffix",
+            normalized=False,
+            encoding_format=EncodingFormat.BINARY,
+            truncation_strategy=TruncationStrategy.END,
+            dimensions=500,
+            prompt="prompt",
+
             batch_size=64,
-            progress_bar=False,
+            show_progress_bar=False,
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
-            instruction="instruction",
-            normalized=False,
         )
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAiDocumentEmbedder",
+            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAIDocumentEmbedder",
             "init_parameters": {
+                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
+                "base_url": "http://example.com",
+                "timeout": 50.0,
+                "max_retries": 10,
+                "use_async_client": True,
                 "model": "model",
                 "prefix": "prefix",
                 "suffix": "suffix",
+                "normalized": False,
+                "encoding_format": EncodingFormat.BINARY,
+                "truncation_strategy": TruncationStrategy.END,
+                "dimensions": 500,
+                "prompt": "prompt",
+
                 "batch_size": 64,
-                "progress_bar": False,
+                "show_progress_bar": False,
                 "meta_fields_to_embed": ["test_field"],
                 "embedding_separator": " | ",
-                "instruction": "instruction",
-                "normalized": False,
             },
         }
 
@@ -105,13 +166,12 @@ class TestMixedbreadAiDocumentEmbedder:
             Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
-        embedder = MixedbreadAiDocumentEmbedder(
-            api_key="fake-api-key", meta_fields_to_embed=["meta_field"], embedding_separator=" | "
+        embedder = MixedbreadAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key"), meta_fields_to_embed=["meta_field"], embedding_separator=" | "
         )
 
-        prepared_texts = embedder._prepare_texts_to_embed(documents)
+        prepared_texts = embedder.from_docs_to_texts(documents)
 
-        # note that newline is replaced by space
         assert prepared_texts == [
             "meta_value 0 | document number 0:\ncontent",
             "meta_value 1 | document number 1:\ncontent",
@@ -123,9 +183,9 @@ class TestMixedbreadAiDocumentEmbedder:
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
-        embedder = MixedbreadAiDocumentEmbedder(api_key="fake-api-key", prefix="my_prefix ", suffix=" my_suffix")
+        embedder = MixedbreadAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix")
 
-        prepared_texts = embedder._prepare_texts_to_embed(documents)
+        prepared_texts = embedder.from_docs_to_texts(documents)
 
         assert prepared_texts == [
             "my_prefix document number 0 my_suffix",
@@ -135,95 +195,27 @@ class TestMixedbreadAiDocumentEmbedder:
             "my_prefix document number 4 my_suffix",
         ]
 
-    def test_embed_batch(self):
-        texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
-
-        with patch("mixedbread_ai.MixedbreadAi.embeddings", side_effect=mock_embeddings_response):
-            embedder = MixedbreadAiDocumentEmbedder(api_key="fake-api-key", model="model")
-
-            embeddings, metadata = embedder._embed_batch(texts_to_embed=texts, batch_size=2)
-
-        assert isinstance(embeddings, list)
-        assert len(embeddings) == len(texts)
-        for embedding in embeddings:
-            assert isinstance(embedding, list)
-            assert len(embedding) == 3
-            assert all(isinstance(x, float) for x in embedding)
-
-        assert metadata == {
-            "model": "model",
-            "usage": models.ModelUsage(total_tokens=4, prompt_tokens=4),
-            "normalized": False,
-            "document_meta": [{
-                'index': 0,
-                'truncated': metadata.get('document_meta')[0]["truncated"]
-            }]
-        }
-
-    def test_run(self):
+    def test_run(self, mock_embeddings_response):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+            Document(content="Mixedbread AI is building yummy models", meta={"topic": "AI"})
         ]
 
         model = DEFAULT_VALUES["model"]
-        with patch("mixedbread_ai.MixedbreadAi.embeddings", side_effect=mock_embeddings_response):
-            embedder = MixedbreadAiDocumentEmbedder(
-                api_key="fake-api-key",
-                model=model,
-                prefix="prefix ",
-                suffix=" suffix",
-                meta_fields_to_embed=["topic"],
-                embedding_separator=" | ",
-            )
+        embedder = MixedbreadAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key"),
+            model=model,
+            prefix="prefix ",
+            suffix=" suffix",
+            batch_size=2,
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+        )
 
-            result = embedder.run(documents=docs)
-
-        documents_with_embeddings = result["documents"]
-        metadata = result["meta"]
-
-        assert isinstance(documents_with_embeddings, list)
-        assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 3
-            assert all(isinstance(x, float) for x in doc.embedding)
-        assert metadata == {
-            "model": model,
-            "usage": models.ModelUsage(total_tokens=4, prompt_tokens=4),
-            "normalized": False,
-            "document_meta": [{
-                'index': 0,
-                'truncated': metadata.get('document_meta')[0]["truncated"]
-            },
-            {
-                'index': 1,
-                'truncated': metadata.get('document_meta')[1]["truncated"]
-            }]
-        }
-
-    def test_run_custom_batch_size(self):
-        docs = [
-            Document(content="I love cheese", meta={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-        ]
-        model = DEFAULT_VALUES["model"]
-        with patch("mixedbread_ai.MixedbreadAi.embeddings", side_effect=mock_embeddings_response):
-            embedder = MixedbreadAiDocumentEmbedder(
-                api_key="fake-api-key",
-                model=model,
-                prefix="prefix ",
-                suffix=" suffix",
-                meta_fields_to_embed=["topic"],
-                embedding_separator=" | ",
-                batch_size=1,
-            )
-
-            result = embedder.run(documents=docs)
+        result = embedder.run(documents=docs)
 
         documents_with_embeddings = result["documents"]
-        metadata = result["meta"]
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
@@ -233,33 +225,43 @@ class TestMixedbreadAiDocumentEmbedder:
             assert len(doc.embedding) == 3
             assert all(isinstance(x, float) for x in doc.embedding)
 
-        assert metadata == {
+        assert result["meta"] == {
             "model": model,
-            "usage": models.ModelUsage(total_tokens=4, prompt_tokens=4),
-            "normalized": False,
-            "document_meta": [{
-                'index': 0,
-                'truncated': metadata.get('document_meta')[0]["truncated"]
-            }]
+            "usage": Usage(prompt_tokens=8, total_tokens=8).dict(),
+            "object": ObjectType.LIST,
+            "normalized": True,
+            "encoding_format": EncodingFormat.FLOAT,
+            "dimensions": 3
         }
 
-    def test_run_wrong_input_format(self):
-        embedder = MixedbreadAiDocumentEmbedder(api_key="fake-api-key")
+    @pytest.mark.skipif(
+        not os.environ.get("MXBAI_API_KEY", None),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_real_documents(self):
+        docs = [
+            Document(content="The Eiffel Tower is in Paris", meta={"topic": "Travel"}),
+            Document(content="Quantum mechanics is a fundamental theory in physics", meta={"topic": "Science"}),
+            Document(content="Baking bread requires yeast", meta={"topic": "Cooking"})
+        ]
 
-        string_input = "text"
-        list_integers_input = [1, 2, 3]
+        embedder = MixedbreadAIDocumentEmbedder(
+            batch_size=2,
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+        )
 
-        with pytest.raises(TypeError, match="MixedbreadAiDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=string_input)
+        result = embedder.run(documents=docs)
 
-        with pytest.raises(TypeError, match="MixedbreadAiDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=list_integers_input)
+        documents_with_embeddings = result["documents"]
 
-    def test_run_on_empty_list(self):
-        embedder = MixedbreadAiDocumentEmbedder(api_key="fake-api-key")
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) > 0
+            assert all(isinstance(x, float) for x in doc.embedding)
 
-        empty_list_input = []
-        result = embedder.run(documents=empty_list_input)
-
-        assert result["documents"] is not None
-        assert not result["documents"]  # empty list
+        assert "meta" in result

@@ -23,8 +23,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-haystack-ai = "^2.0.0b5"
-mixedbread_ai = "^1.2.5"
+haystack-ai = "^2.2.3"
+mixedbread_ai = "^2.2.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

@@ -1,2 +1,2 @@
-from .text_embedder import MixedbreadAiTextEmbedder, MixedBreadAiTextEmbedderMeta
-from .document_embedder import MixedbreadAiDocumentEmbedder, MixedbreadAiDocumentEmbedderMeta
+from .text_embedder import MixedbreadAITextEmbedder
+from .document_embedder import MixedbreadAIDocumentEmbedder
