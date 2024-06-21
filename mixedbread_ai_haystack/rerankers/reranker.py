@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_to_dict, logging
-from mixedbread_ai.types import RerankingResponse
 
 from mixedbread_ai_haystack.common.client import MixedbreadAIClient, from_dict
 
@@ -105,9 +104,9 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         dicts = [doc.to_dict() for doc in documents]
-        rank_fields = [*self.meta_fields_to_rank, "content"]
+        rank_fields = list({*self.meta_fields_to_rank, "content"})
 
-        response: RerankingResponse = self._client.reranking(
+        response = self._client.reranking(
             model=self.model,
             query=query,
             input=dicts,

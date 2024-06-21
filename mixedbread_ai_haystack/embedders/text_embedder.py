@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional
 
 from haystack import component, default_to_dict
 from mixedbread_ai import EncodingFormat, TruncationStrategy
-from mixedbread_ai.types import EmbeddingsResponse
 
 from mixedbread_ai_haystack.common.client import MixedbreadAIClient, from_dict
 
@@ -118,7 +117,6 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
 
         Raises:
             TypeError: If the input is not a string.
-            ValueError: If the response from the embedding service is empty.
         """
         if not isinstance(text, str):
             raise TypeError(
@@ -127,7 +125,7 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
             )
 
         text_to_embed = self.prefix + text + self.suffix
-        response: EmbeddingsResponse = self._client.embeddings(
+        response = self._client.embeddings(
             model=self.model,
             input=text_to_embed,
             normalized=self.normalized,
@@ -137,9 +135,6 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
             prompt=prompt or self.prompt,
             request_options=self._request_options
         )
-
-        if response.data is None:
-            raise ValueError("MixedbreadAITextEmbedder received an empty response.")
 
         return {
             "embedding": response.data[0].embedding,

@@ -47,7 +47,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
     def __init__(
             self,
             batch_size: int = 128,
-            show_progress_bar: bool = True,
+            show_progress_bar: bool = False,
             embedding_separator: str = "\n",
             meta_fields_to_embed: Optional[List[str]] = None,
             **kwargs
