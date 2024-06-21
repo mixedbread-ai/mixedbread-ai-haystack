@@ -6,6 +6,8 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread_ai.client import MixedbreadAI, AsyncMixedbreadAI
 from mixedbread_ai.core import RequestOptions
 
+USER_AGENT = "mixedbread-ai@haystack/2.0.0"
+
 
 class MixedbreadAIClient:
     """
@@ -45,8 +47,9 @@ class MixedbreadAIClient:
         self.use_async_client = use_async_client
 
         self._request_options = RequestOptions(
-            max_retries=max_retries
-        ) if max_retries is not None else None
+            max_retries=max_retries,
+            additional_headers={"User-Agent": USER_AGENT},
+        )
 
         self._client = AsyncMixedbreadAI(
             api_key=api_key.resolve_value(),
