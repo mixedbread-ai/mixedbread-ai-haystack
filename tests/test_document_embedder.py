@@ -7,6 +7,7 @@ from mixedbread_ai import EncodingFormat, TruncationStrategy, ObjectType
 
 from mixedbread_ai.types import Usage
 from mixedbread_ai_haystack.embedders import MixedbreadAIDocumentEmbedder
+from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
 from .utils import mock_embeddings_response
 
 DEFAULT_VALUES = {
@@ -225,14 +226,14 @@ class TestMixedbreadAIDocumentEmbedder:
             assert len(doc.embedding) == 3
             assert all(isinstance(x, float) for x in doc.embedding)
 
-        assert result["meta"] == {
-            "model": model,
-            "usage": Usage(prompt_tokens=8, total_tokens=8).dict(),
-            "object": ObjectType.LIST,
-            "normalized": True,
-            "encoding_format": EncodingFormat.FLOAT,
-            "dimensions": 3
-        }
+        assert result["meta"] == EmbedderMeta(
+            usage=Usage(prompt_tokens=8, total_tokens=8),
+            model=model,
+            object=ObjectType.LIST,
+            normalized=True,
+            encoding_format=EncodingFormat.FLOAT,
+            dimensions=3
+        )
 
     @pytest.mark.skipif(
         not os.environ.get("MXBAI_API_KEY", None),

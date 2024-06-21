@@ -1,9 +1,18 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from haystack import component, default_to_dict
-from mixedbread_ai import EncodingFormat, TruncationStrategy
+from mixedbread_ai import EncodingFormat, TruncationStrategy, Usage, ObjectType
 
 from mixedbread_ai_haystack.common.client import MixedbreadAIClient
+
+
+class EmbedderMeta(TypedDict):
+    usage: Usage
+    model: str
+    object: ObjectType
+    normalized: bool
+    encoding_format: EncodingFormat
+    dimensions: int
 
 
 @component
@@ -88,7 +97,7 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
                                prompt=self.prompt
                                )
 
-    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    @component.output_types(embedding=List[float], meta=EmbedderMeta)
     def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
         """
         Embeds a string of text and returns the embedding and metadata.
@@ -125,5 +134,8 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
 
         return {
             "embedding": response.data[0].embedding,
-            "meta": response.dict(exclude={"data"})
+            "meta": EmbedderMeta(
+                **response.dict(exclude={"data", "usage"}),
+                usage=response.usage
+            )
         }

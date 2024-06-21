@@ -5,6 +5,7 @@ from mixedbread_ai import Usage
 from tqdm.auto import tqdm
 
 from mixedbread_ai_haystack.embedders import MixedbreadAITextEmbedder
+from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
 
 
 @component
@@ -97,7 +98,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
 
         return [self.prefix + prepare_doc(doc) + self.suffix for doc in docs]
 
-    @component.output_types(documents=List[Document], meta=Dict[str, Any])
+    @component.output_types(documents=List[Document], meta=EmbedderMeta)
     def run(self, documents: List[Document], prompt: Optional[str] = None) -> Dict[str, Any]:
         """
         Computes embeddings for a list of documents.
@@ -151,6 +152,6 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         meta["usage"] = Usage(
             prompt_tokens=sum(response.usage.prompt_tokens for response in responses),
             total_tokens=sum(response.usage.total_tokens for response in responses),
-        ).dict()
+        )
 
-        return {"documents": documents, "meta": meta}
+        return {"documents": documents, "meta": EmbedderMeta(**meta)}

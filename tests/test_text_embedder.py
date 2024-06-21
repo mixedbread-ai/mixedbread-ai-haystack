@@ -6,6 +6,7 @@ from mixedbread_ai import EncodingFormat, TruncationStrategy, ObjectType
 from mixedbread_ai.types import Usage
 
 from mixedbread_ai_haystack.embedders import MixedbreadAITextEmbedder
+from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
 from .utils import mock_embeddings_response
 
 DEFAULT_VALUES = {
@@ -144,14 +145,14 @@ class TestMixedbreadAITextEmbedder:
 
         assert len(result["embedding"]) == 3
         assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == {
-            "model": model,
-            "usage": Usage(prompt_tokens=4, total_tokens=4).dict(),
-            "object": ObjectType.LIST,
-            "normalized": True,
-            "encoding_format": EncodingFormat.FLOAT,
-            "dimensions": 3
-        }
+        assert result["meta"] == EmbedderMeta(
+            usage=Usage(prompt_tokens=4, total_tokens=4),
+            model=model,
+            object=ObjectType.LIST,
+            normalized=True,
+            encoding_format=EncodingFormat.FLOAT,
+            dimensions=3
+        )
 
     def test_run_wrong_input_format(self):
         embedder = MixedbreadAITextEmbedder(api_key=Secret.from_token("fake-api-key"))

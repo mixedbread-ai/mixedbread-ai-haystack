@@ -1,10 +1,18 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from haystack import Document, component, default_to_dict, logging
+from mixedbread_ai import Usage, ObjectType
 
 from mixedbread_ai_haystack.common.client import MixedbreadAIClient
 
 logger = logging.getLogger(__name__)
+
+
+class RerankerMeta(TypedDict, total=False):
+    usage: Usage
+    model: str
+    object: ObjectType
+    top_k: int
 
 
 @component
@@ -69,7 +77,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             meta_fields_to_rank=self.meta_fields_to_rank,
         )
 
-    @component.output_types(documents=List[Document], meta=Dict[str, Any])
+    @component.output_types(documents=List[Document], meta=RerankerMeta)
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict[str, Any]:
         """
         Uses the Mixedbread Reranker to re-rank the list of documents based on the query.
@@ -110,4 +118,10 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             doc.score = result.score
             sorted_docs.append(doc)
 
-        return {"documents": sorted_docs, "meta": response.dict(exclude={"data", "return_input"})}
+        return {
+            "documents": sorted_docs,
+            "meta": RerankerMeta(
+                **response.dict(exclude={"data", "usage", "return_input"}),
+                usage=response.usage
+            )
+        }
