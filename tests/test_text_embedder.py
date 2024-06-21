@@ -167,7 +167,6 @@ class TestMixedbreadAITextEmbedder:
         not os.environ.get("MXBAI_API_KEY", None),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
     )
-    @pytest.mark.integration
     def test_live_run_with_real_text(self):
         embedder = MixedbreadAITextEmbedder()
         result = embedder.run(text="This is a live test with real text input.")

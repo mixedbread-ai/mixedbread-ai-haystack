@@ -23,7 +23,7 @@ DEFAULT_VALUES = {
     "dimensions": None,
     "prompt": None,
     "batch_size": 128,
-    "show_progress_bar": True,
+    "show_progress_bar": False,
     "embedding_separator": "\n",
     "meta_fields_to_embed": [],
 }
@@ -238,7 +238,6 @@ class TestMixedbreadAIDocumentEmbedder:
         not os.environ.get("MXBAI_API_KEY", None),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
     )
-    @pytest.mark.integration
     def test_live_run_with_real_documents(self):
         docs = [
             Document(content="The Eiffel Tower is in Paris", meta={"topic": "Travel"}),

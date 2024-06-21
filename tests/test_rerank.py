@@ -7,8 +7,6 @@ from haystack.utils.auth import Secret
 from mixedbread_ai_haystack.rerankers import MixedbreadAIReranker
 from tests.utils import mock_reranking_response
 
-pytestmark = pytest.mark.ranker
-
 DEFAULT_VALUES = {
     "base_url": None,
     "timeout": 60.0,
@@ -162,7 +160,6 @@ class TestMixedbreadAIReranker:
         not os.environ.get("MXBAI_API_KEY", None),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
     )
-    @pytest.mark.integration
     def test_live_run(self):
         component = MixedbreadAIReranker()
         documents = [
@@ -185,7 +182,6 @@ class TestMixedbreadAIReranker:
         not os.environ.get("MXBAI_API_KEY", None),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
     )
-    @pytest.mark.integration
     def test_live_run_topk_greater_than_docs(self):
         component = MixedbreadAIReranker(
             meta_fields_to_rank=["topic"]
