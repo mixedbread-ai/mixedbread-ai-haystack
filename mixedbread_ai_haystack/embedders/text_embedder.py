@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from haystack import component, default_to_dict
 from mixedbread_ai import EncodingFormat, TruncationStrategy
 
-from mixedbread_ai_haystack.common.client import MixedbreadAIClient, from_dict
+from mixedbread_ai_haystack.common.client import MixedbreadAIClient
 
 
 @component
@@ -66,19 +66,6 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
         self.truncation_strategy = truncation_strategy
         self.dimensions = dimensions
         self.prompt = prompt
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadAITextEmbedder":
-        """
-        Deserializes the component from a dictionary.
-
-        Parameters:
-            data (Dict[str, Any]): Dictionary to deserialize from.
-
-        Returns:
-            MixedbreadAITextEmbedder: The deserialized component.
-        """
-        return from_dict(cls, data)
 
     def to_dict(self) -> Dict[str, Any]:
         """

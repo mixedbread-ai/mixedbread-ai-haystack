@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from haystack import Document, component, default_to_dict, logging
 
-from mixedbread_ai_haystack.common.client import MixedbreadAIClient, from_dict
+from mixedbread_ai_haystack.common.client import MixedbreadAIClient
 
 logger = logging.getLogger(__name__)
 
@@ -68,19 +68,6 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             top_k=self.top_k,
             meta_fields_to_rank=self.meta_fields_to_rank,
         )
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadAIReranker":
-        """
-        Deserializes the component from a dictionary.
-
-        Parameters:
-            data (Dict[str, Any]): The dictionary to deserialize from.
-
-        Returns:
-            MixedbreadAIReranker: The deserialized component.
-        """
-        return from_dict(cls, data)
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict[str, Any]:

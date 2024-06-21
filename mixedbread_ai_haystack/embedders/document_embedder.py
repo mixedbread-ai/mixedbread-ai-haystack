@@ -4,7 +4,6 @@ from haystack import component, Document, default_to_dict
 from mixedbread_ai import Usage
 from tqdm.auto import tqdm
 
-from mixedbread_ai_haystack.common.client import from_dict
 from mixedbread_ai_haystack.embedders import MixedbreadAITextEmbedder
 
 
@@ -58,19 +57,6 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         self.show_progress_bar = show_progress_bar
         self.embedding_separator = embedding_separator
         self.meta_fields_to_embed = meta_fields_to_embed or []
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadAIDocumentEmbedder":
-        """
-        Deserializes the component from a dictionary.
-
-        Parameters:
-            data (Dict[str, Any]): Dictionary to deserialize from.
-
-        Returns:
-            MixedbreadAIDocumentEmbedder: The deserialized component.
-        """
-        return from_dict(cls, data)
 
     def to_dict(self) -> Dict[str, Any]:
         """

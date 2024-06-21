@@ -79,17 +79,17 @@ class MixedbreadAIClient:
             use_async_client=self.use_async_client
         )
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Any:
+        """
+        Deserializes the component from a dictionary.
 
-def from_dict(cls, data: Dict[str, Any]) -> Any:
-    """
-    Deserializes the component from a dictionary.
+        Parameters:
+            data (Dict[str, Any]): Dictionary to deserialize from.
 
-    Parameters:
-        data (Dict[str, Any]): Dictionary to deserialize from.
-
-    Returns:
-        Any: The deserialized component.
-    """
-    init_params = data.get("init_parameters", {})
-    deserialize_secrets_inplace(init_params, ["api_key"])
-    return default_from_dict(cls, data)
+        Returns:
+            Any: The deserialized component.
+        """
+        init_params = data.get("init_parameters", {})
+        deserialize_secrets_inplace(init_params, ["api_key"])
+        return default_from_dict(cls, data)
