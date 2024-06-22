@@ -40,8 +40,8 @@ class MixedbreadAIReranker(MixedbreadAIClient):
 
     def __init__(
         self,
-        model: str = "mixedbread-ai/mxbai-rerank-large-v1",
-        top_k: int = 10,
+        model: str = "default",
+        top_k: int = 20,
         meta_fields_to_rank: Optional[List[str]] = None,
         **kwargs,
     ):
@@ -112,7 +112,6 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         )
 
         sorted_docs = []
-
         for result in response.data:
             doc = documents[result.index]
             doc.score = result.score

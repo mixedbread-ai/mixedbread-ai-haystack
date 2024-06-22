@@ -11,9 +11,8 @@ DEFAULT_VALUES = {
     "base_url": None,
     "timeout": 60.0,
     "max_retries": 3,
-    "use_async_client": False,
-    "model": "mixedbread-ai/mxbai-rerank-large-v1",
-    "top_k": 10,
+    "model": "default",
+    "top_k": 20,
     "meta_fields_to_rank": []
 }
 
@@ -29,7 +28,6 @@ class TestMixedbreadAIReranker:
         assert component.base_url == DEFAULT_VALUES["base_url"]
         assert component.timeout == DEFAULT_VALUES["timeout"]
         assert component.max_retries == DEFAULT_VALUES["max_retries"]
-        assert component.use_async_client == DEFAULT_VALUES["use_async_client"]
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
@@ -62,7 +60,6 @@ class TestMixedbreadAIReranker:
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
                 "max_retries": DEFAULT_VALUES["max_retries"],
-                "use_async_client": DEFAULT_VALUES["use_async_client"],
             },
         }
 
@@ -84,7 +81,6 @@ class TestMixedbreadAIReranker:
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
                 "max_retries": DEFAULT_VALUES["max_retries"],
-                "use_async_client": DEFAULT_VALUES["use_async_client"],
             },
         }
 
@@ -100,7 +96,6 @@ class TestMixedbreadAIReranker:
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
                 "max_retries": DEFAULT_VALUES["max_retries"],
-                "use_async_client": DEFAULT_VALUES["use_async_client"],
             },
         }
         component = MixedbreadAIReranker.from_dict(data)

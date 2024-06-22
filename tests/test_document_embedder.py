@@ -14,7 +14,6 @@ DEFAULT_VALUES = {
     "base_url": None,
     "timeout": 60.0,
     "max_retries": 3,
-    "use_async_client": False,
     "model": "mixedbread-ai/mxbai-embed-large-v1",
     "prefix": "",
     "suffix": "",
@@ -39,7 +38,6 @@ class TestMixedbreadAIDocumentEmbedder:
         assert embedder.base_url == DEFAULT_VALUES["base_url"]
         assert embedder.timeout == DEFAULT_VALUES["timeout"]
         assert embedder.max_retries == DEFAULT_VALUES["max_retries"]
-        assert embedder.use_async_client == DEFAULT_VALUES["use_async_client"]
 
         assert embedder.model == DEFAULT_VALUES["model"]
         assert embedder.prefix == DEFAULT_VALUES["prefix"]
@@ -61,8 +59,6 @@ class TestMixedbreadAIDocumentEmbedder:
             base_url="http://example.com",
             timeout=50.0,
             max_retries=10,
-            use_async_client=True,
-
             model="model",
             prefix="prefix",
             suffix="suffix",
@@ -82,7 +78,6 @@ class TestMixedbreadAIDocumentEmbedder:
         assert embedder.base_url == "http://example.com"
         assert embedder.timeout == 50.0
         assert embedder.max_retries == 10
-        assert embedder.use_async_client
 
         assert embedder.model == "model"
         assert embedder.prefix == "prefix"
@@ -121,8 +116,6 @@ class TestMixedbreadAIDocumentEmbedder:
             base_url="http://example.com",
             timeout=50.0,
             max_retries=10,
-            use_async_client=True,
-
             model="model",
             prefix="prefix",
             suffix="suffix",
@@ -145,7 +138,6 @@ class TestMixedbreadAIDocumentEmbedder:
                 "base_url": "http://example.com",
                 "timeout": 50.0,
                 "max_retries": 10,
-                "use_async_client": True,
                 "model": "model",
                 "prefix": "prefix",
                 "suffix": "suffix",
@@ -171,7 +163,7 @@ class TestMixedbreadAIDocumentEmbedder:
             api_key=Secret.from_token("fake-api-key"), meta_fields_to_embed=["meta_field"], embedding_separator=" | "
         )
 
-        prepared_texts = embedder.from_docs_to_texts(documents)
+        prepared_texts = embedder._documents_to_texts(documents)
 
         assert prepared_texts == [
             "meta_value 0 | document number 0:\ncontent",
@@ -186,7 +178,7 @@ class TestMixedbreadAIDocumentEmbedder:
 
         embedder = MixedbreadAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix")
 
-        prepared_texts = embedder.from_docs_to_texts(documents)
+        prepared_texts = embedder._documents_to_texts(documents)
 
         assert prepared_texts == [
             "my_prefix document number 0 my_suffix",

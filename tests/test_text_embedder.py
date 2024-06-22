@@ -13,7 +13,6 @@ DEFAULT_VALUES = {
     "base_url": None,
     "timeout": 60.0,
     "max_retries": 3,
-    "use_async_client": False,
     "model": "mixedbread-ai/mxbai-embed-large-v1",
     "prefix": "",
     "suffix": "",
@@ -34,7 +33,6 @@ class TestMixedbreadAITextEmbedder:
         assert embedder.base_url == DEFAULT_VALUES["base_url"]
         assert embedder.timeout == DEFAULT_VALUES["timeout"]
         assert embedder.max_retries == DEFAULT_VALUES["max_retries"]
-        assert embedder.use_async_client == DEFAULT_VALUES["use_async_client"]
 
         assert embedder.model == DEFAULT_VALUES["model"]
         assert embedder.prefix == DEFAULT_VALUES["prefix"]
@@ -51,8 +49,6 @@ class TestMixedbreadAITextEmbedder:
             base_url="http://example.com",
             timeout=50.0,
             max_retries=10,
-            use_async_client=True,
-
             model="model",
             prefix="prefix",
             suffix="suffix",
@@ -67,7 +63,6 @@ class TestMixedbreadAITextEmbedder:
         assert embedder.base_url == "http://example.com"
         assert embedder.timeout == 50.0
         assert embedder.max_retries == 10
-        assert embedder.use_async_client
 
         assert embedder.model == "model"
         assert embedder.prefix == "prefix"
@@ -102,8 +97,6 @@ class TestMixedbreadAITextEmbedder:
             base_url="http://example.com",
             timeout=50.0,
             max_retries=10,
-            use_async_client=True,
-
             model="model",
             prefix="prefix",
             suffix="suffix",
@@ -121,7 +114,6 @@ class TestMixedbreadAITextEmbedder:
                 "base_url": "http://example.com",
                 "timeout": 50.0,
                 "max_retries": 10,
-                "use_async_client": True,
                 "model": "model",
                 "prefix": "prefix",
                 "suffix": "suffix",
