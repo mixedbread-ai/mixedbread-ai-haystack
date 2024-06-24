@@ -1,145 +1,141 @@
-from typing import Any, Dict, List, Optional
-from typing_extensions import TypedDict
+from typing import Any, Dict, List, Optional, TypedDict
 
-from mixedbread_ai import MixedbreadAi, models
 from haystack import component, default_to_dict
+from mixedbread_ai import EncodingFormat, TruncationStrategy, Usage, ObjectType
+
+from mixedbread_ai_haystack.common.client import MixedbreadAIClient
 
 
-class MixedBreadAiTextEmbedderMeta(TypedDict):
-    """
-    TypedDict for the meta attribute in MixedbreadAiTextEmbedder response.
-
-    Attributes:
-        model: The name of the model used for the embedding.
-        usage: Detailed information about the usage of tokens.
-        truncated: Whether the input text was truncated or not (if the text was too long for the model).
-    """
+class EmbedderMeta(TypedDict):
+    usage: Usage
     model: str
-    usage: models.ModelUsage
-    truncated: bool
+    object: ObjectType
     normalized: bool
-
+    encoding_format: EncodingFormat
+    dimensions: int
 
 
 @component
-class MixedbreadAiTextEmbedder:
+class MixedbreadAITextEmbedder(MixedbreadAIClient):
     """
-    A component for top open-source embeddings using mixedbread.ai.
+    A component for generating text embeddings using mixedbread ai's embedding API.
+
+    Find out more at https://mixedbread.ai/docs
+
+    To use this you'll need a mixedbread ai API key - either pass it to
+    the api_key parameter or set the MXBAI_API_KEY environment variable.
+
+    API keys are available on https://mixedbread.ai - it's free to sign up and trial API
+    keys work with this implementation.
 
     Usage example:
-    ```python
-    from mixedbread_ai_haystack import MixedbreadAiTextEmbedder
+        ```python
+        from mixedbread_ai_haystack import MixedbreadAITextEmbedder
 
-    text_embedder = MixedbreadAiTextEmbedder()
-    text_to_embed = "Bread is love, bread is life."
+        text_embedder = MixedbreadAITextEmbedder(
+            model="mixedbread-ai/mxbai-embed-large-v1"
+        )
 
-    print(text_embedder.run(text_to_embed))
+        text_to_embed = "Bread is love, bread is life."
 
-    # {
-    #    'embedding': [0.06069..., -0.123456..., ...],
-    #    'meta': {
-    #           'model': 'UAE-Large-V1',
-    #           'usage': {'prompt_tokens': 420, 'total_tokens': 420}
-    #           'truncated': False,
-    #           'normalized': True
-    #    }
-    # }
+        print(text_embedder.run(text_to_embed))
+        ```
+
+    Attributes:
+        model (str): The model to use for generating embeddings.
+        prefix (str): The prefix to add to the text before embedding.
+        suffix (str): The suffix to add to the text before embedding.
+        normalized (bool): Whether to normalize the embeddings.
+        encoding_format (EncodingFormat): The format for encoding the embeddings.
+        truncation_strategy (TruncationStrategy): The strategy for truncating the text.
+        dimensions (Optional[int]): The desired number of dimensions in the output vectors.
+            Only applicable for Matryoshka-based models.
+        prompt (Optional[str]): The prompt to use for the embedding model.
     """
 
     def __init__(
             self,
-            model: str = "UAE-Large-V1",
+            model: str = "mixedbread-ai/mxbai-embed-large-v1",
             prefix: str = "",
             suffix: str = "",
             normalized: bool = True,
-            instruction: Optional[str] = None,
-            api_key: Optional[str] = None,
-            base_url: Optional[str] = "https://api.mixedbread.ai",
-            custom_headers: Optional[Dict[str, str]] = None,
-            timeout: Optional[float] = None,
-            verify_ssl: Optional[bool] = None,
+            encoding_format: EncodingFormat = EncodingFormat.FLOAT,
+            truncation_strategy: TruncationStrategy = TruncationStrategy.START,
+            dimensions: Optional[int] = None,
+            prompt: Optional[str] = None,
+            **kwargs
     ):
-        """
-        Create a MixedBreadTextEmbedder component.
+        super(MixedbreadAITextEmbedder, self).__init__(**kwargs)
 
-        :param model: The name of the MixedBread model to use. Check the list of available models on `https://mixedbread.ai/docs/models/embeddings/`
-        :param prefix: A string to add to the beginning of each text.
-        :param suffix: A string to add to the end of each text.
-        :param normalized: Whether to normalize the embeddings or not.
-        :param api_key: The MixedBread API key. It can be explicitly provided or automatically read from the
-            environment variable MIXEDBREAD_API_KEY (recommended).
-        :param base_url: The URL of the MixedBread API.
-        :param timeout: Timeout for the MixedBread API request.
-        :param verify_ssl: Whether to verify the SSL certificate for the MixedBread API request.
-        :param custom_headers: Custom headers to add to the requests sent to the mixedbread.ai API.
-        :param instruction: Used to specify the instruction for the model. Can only be used with instruction based models like e5-large-v2
-        for example. If not specified, the default instruction for the model will be used.
-        """
-
-        self.model_name = model
+        self.model = model
         self.prefix = prefix
         self.suffix = suffix
         self.normalized = normalized
-        self.instruction = instruction
-        self._client = MixedbreadAi(
-            api_key=api_key,
-            base_url=base_url,
-            verify_ssl=verify_ssl,
-            timeout=timeout,
-            raise_for_status=True,
-            headers={
-                "User-Agent": "@mixedbread-ai/integrations-haystack",
-                **(custom_headers or {}),
-            }
-        )
-
-    def _get_telemetry_data(self) -> Dict[str, Any]:
-        """
-        Data that is sent to Posthog for usage analytics.
-        """
-        return {"model": self.model_name}
+        self.encoding_format = encoding_format
+        self.truncation_strategy = truncation_strategy
+        self.dimensions = dimensions
+        self.prompt = prompt
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        This method overrides the default serializer in order to avoid leaking the `api_key` value passed
-        to the constructor.
+        Serializes the component to a dictionary.
+
+        Returns:
+            Dict[str, Any]: The serialized component data.
         """
+        parent_params = super(MixedbreadAITextEmbedder, self).to_dict()["init_parameters"]
+
         return default_to_dict(self,
-                               model=self.model_name,
+                               **parent_params,
+                               model=self.model,
                                prefix=self.prefix,
                                suffix=self.suffix,
                                normalized=self.normalized,
-                               instruction=self.instruction)
+                               encoding_format=self.encoding_format,
+                               truncation_strategy=self.truncation_strategy,
+                               dimensions=self.dimensions,
+                               prompt=self.prompt
+                               )
 
-    @component.output_types(embedding=List[float], meta=Dict[str, Any])
-    def run(self, text: str):
-        """Embed a string."""
+    @component.output_types(embedding=List[float], meta=EmbedderMeta)
+    def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Embeds a string of text and returns the embedding and metadata.
+
+        Parameters:
+            text (str): The text to embed.
+            prompt (Optional[str]): An optional prompt to use with the embedding model.
+
+        Returns:
+            Dict[str, Any]: A dictionary with the following keys:
+                - `embedding`: The embedding of the input text.
+                - `meta`: Metadata about the request.
+
+        Raises:
+            TypeError: If the input is not a string.
+        """
         if not isinstance(text, str):
-            msg = (
-                "MixedbreadAiTextEmbedder expects a string as an input."
-                "In case you want to embed a list of Documents, please use the MixedbreadAiDocumentEmbedder."
+            raise TypeError(
+                "MixedbreadAITextEmbedder expects a string as an input. "
+                "In case you want to embed a list of Documents, please use the MixedbreadAIDocumentEmbedder."
             )
-            raise TypeError(msg)
 
         text_to_embed = self.prefix + text + self.suffix
-        res = self._client.embeddings(
-            model=self.model_name,
+        response = self._client.embeddings(
+            model=self.model,
             input=text_to_embed,
-            instruction=self.instruction,
             normalized=self.normalized,
-        )
-        if res is None:
-            raise ValueError("MixedbreadAiTextEmbedder received an empty response.")
-        if "message" in res:
-            raise ValueError(
-                f"MixedbreadAiTextEmbedder recieved an unexpected response. Code: {res['code']} Message: {res['message']}")
-
-        embedding = res.data[0].embedding
-        metadata = MixedBreadAiTextEmbedderMeta(
-            model=self.model_name,
-            usage=res.usage,
-            truncated=res.data[0].truncated,
-            normalized=self.normalized,
+            encoding_format=self.encoding_format,
+            truncation_strategy=self.truncation_strategy,
+            dimensions=self.dimensions,
+            prompt=prompt or self.prompt,
+            request_options=self._request_options
         )
 
-        return {"embedding": embedding, "meta": metadata}
+        return {
+            "embedding": response.data[0].embedding,
+            "meta": EmbedderMeta(
+                **response.dict(exclude={"data", "usage"}),
+                usage=response.usage
+            )
+        }
