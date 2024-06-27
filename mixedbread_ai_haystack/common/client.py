@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Union
 import httpx
 from haystack import default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
-from mixedbread_ai.client import MixedbreadAI, AsyncMixedbreadAI
+from mixedbread_ai.client import MixedbreadAI
 from mixedbread_ai.core import RequestOptions
 
 USER_AGENT = "mixedbread-ai@haystack/2.0.0"
@@ -49,7 +49,7 @@ class MixedbreadAIClient:
 
         self._request_options = RequestOptions(
             max_retries=max_retries,
-            timeout=timeout,
+            timeout_in_seconds=timeout,
             additional_headers={"User-Agent": USER_AGENT},
         )
         self._client = MixedbreadAI(
