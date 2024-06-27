@@ -6,7 +6,7 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread_ai.client import MixedbreadAI
 from mixedbread_ai.core import RequestOptions
 
-USER_AGENT = "mixedbread-ai@haystack/2.0.0"
+USER_AGENT = "mixedbread-ai@haystack"
 
 
 class MixedbreadAIClient:
