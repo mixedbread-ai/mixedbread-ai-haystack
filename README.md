@@ -1,4 +1,4 @@
-# mixedbread ai Haystack 2.0 Integration
+# Mixedbread AI Haystack 2.0 Integration
 [![PyPI version](https://badge.fury.io/py/mixedbread-ai-haystack.svg)](https://badge.fury.io/py/mixedbread-ai-haystack)
 [![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/) 
 
@@ -14,7 +14,7 @@
 
 ## Installation
 
-Install the mixedbread ai integration with a simple pip command:
+Install the Mixedbread AI integration with a simple pip command:
 
 ```bash
 pip install mixedbread-ai-haystack

@@ -6,18 +6,18 @@ from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread_ai.client import MixedbreadAI
 from mixedbread_ai.core import RequestOptions
 
-USER_AGENT = "mixedbread-ai@haystack"
+USER_AGENT = "@mixedbread-ai/haystack"
 
 
 class MixedbreadAIClient:
     """
-    mixedbread ai Client configuration and initialization.
+    Mixedbread AI Client configuration and initialization.
 
     Attributes:
-        api_key (Secret): mixedbread ai API key. Must be specified directly or via environment variable 'MXBAI_API_KEY'.
-        base_url (Optional[str]): Base URL for the mixedbread ai API. Leave blank if not using a proxy or service emulator.
-        timeout (Optional[float]): Timeout for the mixedbread ai API.
-        max_retries (Optional[int]): Max retries for the mixedbread ai API.
+        api_key (Secret): Mixedbread AI API key. Must be specified directly or via environment variable 'MXBAI_API_KEY'.
+        base_url (Optional[str]): Base URL for the Mixedbread AI API. Leave blank if not using a proxy or service emulator.
+        timeout (Optional[float]): Timeout for the Mixedbread AI API.
+        max_retries (Optional[int]): Max retries for the Mixedbread AI API.
         httpx_client (Optional[httpx.Client]): An optional synchronous HTTPX client instance (not serialized).
     """
 
@@ -31,7 +31,7 @@ class MixedbreadAIClient:
     ):
         if api_key is None:
             raise ValueError(
-                "The mixedbread ai API key must be specified."
+                "The Mixedbread AI API key must be specified."
                 + "You either pass it in the constructor using 'api_key'"
                 + "or via the 'MXBAI_API_KEY' environment variable."
             )

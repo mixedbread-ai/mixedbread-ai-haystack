@@ -18,11 +18,11 @@ class EmbedderMeta(TypedDict):
 @component
 class MixedbreadAITextEmbedder(MixedbreadAIClient):
     """
-    A component for generating text embeddings using mixedbread ai's embedding API.
+    A component for generating text embeddings using Mixedbread AI's embedding API.
 
     Find out more at https://mixedbread.ai/docs
 
-    To use this you'll need a mixedbread ai API key - either pass it to
+    To use this you'll need a Mixedbread AI API key - either pass it to
     the api_key parameter or set the MXBAI_API_KEY environment variable.
 
     API keys are available on https://mixedbread.ai - it's free to sign up and trial API

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "mixedbread-ai-haystack"
-version = "2.0.1"
-description = 'mixedbread ai (https://www.mixedbread.ai) Haystack integration'
+version = "2.0.2"
+description = 'Mixedbread AI (https://www.mixedbread.ai) Haystack integration'
 readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/mixedbread-ai/mixedbread-ai-haystack.git"
 keywords = ["Embeddings", "Rerank", "Search", "NLP", "mixedbread.ai", "mixedbread ai", "Haystack", "deepset"]
-authors = ["mixedbread ai <support@mixedbread.ai>"]
+authors = ["Mixedbread AI <support@mixedbread.ai>"]
 include = ["mixedbread_ai/py.typed"]
 packages = [
     { include = "mixedbread_ai_haystack" },

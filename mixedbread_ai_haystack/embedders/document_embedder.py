@@ -18,14 +18,14 @@ except ImportError:
 @component
 class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
     """
-    A component for generating document embeddings using mixedbread ai's embedding API.
+    A component for generating document embeddings using Mixedbread AI's embedding API.
     The embedding of each Document is stored in the `embedding` field of the Document.
 
     Find out more at https://mixedbread.ai/docs
 
     This implementation uses the embeddings API.
 
-    To use this you'll need a mixedbread ai API key - either pass it to
+    To use this you'll need a Mixedbread AI API key - either pass it to
     the api_key parameter or set the MXBAI_API_KEY environment variable.
 
     API keys are available on https://mixedbread.ai - it's free to sign up and trial API

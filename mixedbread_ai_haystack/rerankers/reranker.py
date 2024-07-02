@@ -18,7 +18,7 @@ class RerankerMeta(TypedDict, total=False):
 @component
 class MixedbreadAIReranker(MixedbreadAIClient):
     """
-    Ranks Documents based on their similarity to the query using mixedbread ai's reranking API.
+    Ranks Documents based on their similarity to the query using Mixedbread AI's reranking API.
 
     Documents are indexed from most to least semantically relevant to the query.
 
