@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 haystack-ai = "^2.2.3"
 mixedbread_ai = "^2.2.2"
 mxbai-rerank = "^0.1.3"
