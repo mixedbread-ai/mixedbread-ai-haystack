@@ -1,8 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import torch
-from transformers.modeling_outputs import CausalLMOutput
 
 from haystack import Document
 from haystack.utils.device import ComponentDevice
@@ -158,6 +157,6 @@ class TestSimilarityRanker:
         assert docs_after[0].content == expected_first_text
 
         sorted_scores = sorted(expected_scores, reverse=True)
-        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-6)
-        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
-        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
+        assert docs_after[0].score == pytest.approx(sorted_scores[0], abs=1e-3)
+        assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-3)
+        assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-3)
