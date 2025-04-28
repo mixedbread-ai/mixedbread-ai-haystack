@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 from mxbai_rerank import MxbaiRerankV2
 
 from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 
@@ -14,6 +14,21 @@ class LocalMixedbreadAIRerankerV2:
     Ranks documents based on their semantic similarity to the query.
 
     It uses a pre-trained model from the MixedBread AI library to evaluate the relevance of documents to a given query.
+    
+    ### Usage example
+
+    ```python
+    from haystack import Document
+    from mixedbread_ai_haystack.rerankers.local_reranker_v2 import LocalMixedbreadAIRerankerV2
+
+    ranker = LocalMixedbreadAIRerankerV2()
+    ranker.warm_up()
+    docs = [Document(content="Paris"), Document(content="Berlin")]
+    query = "City in Germany"
+    result = ranker.run(query=query, documents=docs)
+    docs = result["documents"]
+    print(docs[0].content)
+    ```
     """
 
     def __init__(
@@ -21,12 +36,11 @@ class LocalMixedbreadAIRerankerV2:
         model: Union[str, Path] = "mixedbread-ai/mxbai-rerank-base-v2",
         *,
         device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         max_length: int = 8192,
         batch_size: int = 16,
-        meta_fields_to_embed: Optional[List[str]] = None,
-        embedding_separator: str = "\n",
+        meta_fields_to_rank: Optional[List[str]] = None,
+        ranking_separator: str = "\n",
         score_threshold: Optional[float] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -38,15 +52,13 @@ class LocalMixedbreadAIRerankerV2:
             The ranking model. Pass a local path or the Hugging Face model name of a MxbaiRerankV2 model.
         :param device:
             The device on which the model is loaded. If `None`, overrides the default device.
-        :param token:
-            The API token to download private models from Hugging Face.
         :param top_k:
             The maximum number of documents to return per query.
         :param max_length:
             The maximum sequence length for the model. This should be a multiple of 8.
-        :param meta_fields_to_embed:
-            List of metadata fields to embed with the document.
-        :param embedding_separator:
+        :param meta_fields_to_rank:
+            List of meta fields that should be concatenated with the document content for reranking.
+        :param ranking_separator:
             Separator to concatenate metadata fields to the document.
         :param score_threshold:
             Use it to return documents with a score above this threshold only.
@@ -63,10 +75,9 @@ class LocalMixedbreadAIRerankerV2:
         self.model = model
         self.device = device
         self.top_k = top_k
-        self.token = token
         self.max_length = max_length
-        self.meta_fields_to_embed = meta_fields_to_embed
-        self.embedding_separator = embedding_separator
+        self.meta_fields_to_rank = meta_fields_to_rank or []
+        self.ranking_separator = ranking_separator
         self.score_threshold = score_threshold
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
@@ -79,7 +90,6 @@ class LocalMixedbreadAIRerankerV2:
         """
         resolved_model_kwargs = resolve_hf_device_map(device=self.device, model_kwargs=self.model_kwargs)
         resolved_kwargs = {
-            "device": self.device.to_torch_str(),
             "torch_dtype": resolved_model_kwargs.get("torch_dtype", None),
             "max_length": self.max_length,
             "tokenizer_kwargs": self.tokenizer_kwargs or {},
@@ -128,13 +138,13 @@ class LocalMixedbreadAIRerankerV2:
         texts = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_rank if key in doc.meta and doc.meta[key]
             ]
-            text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+            text_to_embed = self.ranking_separator.join(meta_values_to_embed + [doc.content or ""])
             texts.append(text_to_embed)
 
         # Rank and get scores
-        ranked_results = self.torch_model.rank(
+        ranked_results = self._torch_model.rank(
             query=query, documents=texts, top_k=top_k, return_documents=True, sort=True, batch_size=self.batch_size
         )
 
@@ -165,12 +175,11 @@ class LocalMixedbreadAIRerankerV2:
             self,
             device=self.device.to_dict() if self.device else None,
             model=self.model,
-            token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
-            meta_fields_to_embed=self.meta_fields_to_embed,
-            embedding_separator=self.embedding_separator,
+            meta_fields_to_rank=self.meta_fields_to_rank,
+            ranking_separator=self.ranking_separator,
             score_threshold=self.score_threshold,
-            model_kwargs=self.model_kwargs,
+            model_kwargs=self.model_kwargs or {},
             tokenizer_kwargs=self.tokenizer_kwargs,
             batch_size=self.batch_size,
         )
@@ -178,7 +187,7 @@ class LocalMixedbreadAIRerankerV2:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MixedBreadAIRankerV2":
+    def from_dict(cls, data: Dict[str, Any]) -> "LocalMixedbreadAIRerankerV2":
         """
         Deserializes the component from a dictionary.
 
@@ -195,5 +204,4 @@ class LocalMixedbreadAIRerankerV2:
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
-        deserialize_secrets_inplace(init_params, keys=["token"])
         return default_from_dict(cls, data)
