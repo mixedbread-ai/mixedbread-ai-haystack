@@ -1,2 +1,4 @@
-from .embedders import MixedbreadAIDocumentEmbedder, MixedbreadAITextEmbedder
-from .rerankers import MixedbreadAIReranker, LocalMixedbreadAIRerankerV2
+__version__ = "0.1.0"
+
+from .embedders import MixedbreadDocumentEmbedder, MixedbreadTextEmbedder
+from .rerankers import MixedbreadReranker
