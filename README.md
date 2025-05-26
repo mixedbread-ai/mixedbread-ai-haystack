@@ -1,6 +1,7 @@
-# Mixedbread AI Haystack 2.0 Integration
+# Mixedbread Haystack 2.0 Integration
+
 [![PyPI version](https://badge.fury.io/py/mixedbread-ai-haystack.svg)](https://badge.fury.io/py/mixedbread-ai-haystack)
-[![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/) 
+[![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/)
 
 ### **Table of Contents**
 
@@ -10,11 +11,11 @@
 
 ## Overview
 
-[mixedbread ai](https://www.mixedbread.ai) is an AI start-up that provides open-source, as well as, in-house embedding and reranking models. You can choose from various foundation models to find the one best suited for your use case. More information can be found on the [documentation page](https://www.mixedbread.ai/api-reference/integrations#haystack).
+[mixedbread](https://www.mixedbread.com) is an AI start-up that provides open-source, as well as, in-house embedding and reranking models. You can choose from various foundation models to find the one best suited for your use case. More information can be found on the [documentation page](https://www.mixedbread.com/docs).
 
 ## Installation
 
-Install the Mixedbread AI integration with a simple pip command:
+Install the Mixedbread integration with a simple pip command:
 
 ```bash
 pip install mixedbread-ai-haystack
@@ -23,11 +24,12 @@ pip install mixedbread-ai-haystack
 ## Usage
 
 This integration comes with 3 components:
+
 - [`MixedbreadAITextEmbedder`](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/mixedbread_ai_haystack/embedders/text_embedder.py)
 - [`MixedbreadAIDocumentEmbedder`](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/mixedbread_ai_haystack/embedders/document_embedder.py).
 - [`MixedbreadAIReranker`](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/mixedbread_ai_haystack/rerankers/reranker.py)
 
-For documents you can use `MixedbreadAIDocumentEmbedder` and for queries you can use `MixedbreadAITextEmbedder`. Once you've selected the component for your specific use case, initialize the component with the `model` and the [`api_key`](https://www.mixedbread.ai/dashboard?next=api-keys). You can also set the environment variable `MXBAI_API_KEY` instead of passing the api key as an argument.
+For documents you can use `MixedbreadAIDocumentEmbedder` and for queries you can use `MixedbreadAITextEmbedder`. Once you've selected the component for your specific use case, initialize the component with the `model` and the [`api_key`](https://www.platform.mixedbread.com/api-keys). You can also set the environment variable `MXBAI_API_KEY` instead of passing the api key as an argument.
 
 ### Embedders In a Pipeline
 
@@ -67,6 +69,7 @@ print(top_document)
 ```
 
 ### Reranker In a Pipeline
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -99,6 +102,7 @@ print(results)
 ```
 
 ### Full Example With Metadata
+
 ```python
 import os
 from datasets import load_dataset
