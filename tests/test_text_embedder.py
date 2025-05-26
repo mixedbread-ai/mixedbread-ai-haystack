@@ -60,6 +60,7 @@ class TestMixedbreadTextEmbedder:
             encoding_format="binary",
             dimensions=500,
             prompt="prompt",
+            prompt="prompt",
         )
 
         assert embedder.api_key == Secret.from_token("test-api-key")

@@ -160,7 +160,11 @@ class TestMixedbreadDocumentEmbedder:
         Test document preparation with metadata fields.
         """
         documents = [
-            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(
+                content=f"document number {i}:\ncontent",
+                meta={"meta_field": f"meta_value {i}"},
+            )
+            for i in range(5)
         ]
 
         embedder = MixedbreadDocumentEmbedder(
