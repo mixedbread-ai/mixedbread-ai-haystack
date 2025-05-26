@@ -20,7 +20,7 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
     """
     A component for generating text embeddings using Mixedbread AI's embedding API.
 
-    Find out more at https://mixedbread.ai/docs
+    Find out more at https://mixedbread.com/docs
 
     To use this you'll need a Mixedbread AI API key - either pass it to
     the api_key parameter or set the MXBAI_API_KEY environment variable.

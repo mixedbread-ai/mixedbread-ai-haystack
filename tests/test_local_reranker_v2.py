@@ -21,6 +21,7 @@ class TestSimilarityRanker:
                 "device": None,
                 "top_k": 10,
                 "model": "mixedbread-ai/mxbai-rerank-base-v2",
+                "max_length": 8192,
                 "meta_fields_to_rank": [],
                 "ranking_separator": "\n",
                 "score_threshold": None,
@@ -47,6 +48,7 @@ class TestSimilarityRanker:
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "model": "my_model",
                 "top_k": 5,
+                "max_length": 8192,
                 "meta_fields_to_rank": [],
                 "ranking_separator": "\n",
                 "score_threshold": 0.01,
@@ -65,6 +67,7 @@ class TestSimilarityRanker:
                 "device": None,
                 "model": "my_model",
                 "top_k": 5,
+                "max_length": 8192,
                 "meta_fields_to_rank": [],
                 "ranking_separator": "\n",
                 "score_threshold": 0.01,
@@ -78,6 +81,7 @@ class TestSimilarityRanker:
         assert component.device is None
         assert component.model == "my_model"
         assert component.top_k == 5
+        assert component.max_length == 8192
         assert component.meta_fields_to_rank == []
         assert component.ranking_separator == "\n"
         assert component.score_threshold == 0.01
@@ -135,6 +139,10 @@ class TestSimilarityRanker:
         sampler = LocalMixedbreadAIRerankerV2()
         with pytest.raises(RuntimeError):
             sampler.run(query="query", documents=[Document(content="document")])
+    
+    def test_max_length_validation(self):
+        with pytest.raises(ValueError, match="max_length must be a multiple of 8"):
+            LocalMixedbreadAIRerankerV2(max_length=8191)
 
     @pytest.mark.integration
     def test_run(self):

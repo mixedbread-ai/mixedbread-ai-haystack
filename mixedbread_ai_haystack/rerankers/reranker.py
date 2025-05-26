@@ -22,7 +22,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
 
     Documents are indexed from most to least semantically relevant to the query.
 
-    Find out more at https://mixedbread.ai/docs
+    Find out more at https://mixedbread.com/docs
 
     Usage example:
     ```python

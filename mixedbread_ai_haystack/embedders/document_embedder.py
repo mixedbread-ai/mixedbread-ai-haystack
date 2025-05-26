@@ -21,7 +21,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
     A component for generating document embeddings using Mixedbread AI's embedding API.
     The embedding of each Document is stored in the `embedding` field of the Document.
 
-    Find out more at https://mixedbread.ai/docs
+    Find out more at https://mixedbread.com/docs
 
     This implementation uses the embeddings API.
 

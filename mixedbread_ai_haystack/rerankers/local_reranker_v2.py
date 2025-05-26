@@ -48,30 +48,27 @@ class LocalMixedbreadAIRerankerV2:
         """
         Creates an instance of MixedBreadAIRanker.
 
-        :param model:
-            The ranking model. Pass a local path or the Hugging Face model name of a MxbaiRerankV2 model.
-        :param device:
-            The device on which the model is loaded. If `None`, overrides the default device.
-        :param top_k:
-            The maximum number of documents to return per query.
-        :param max_length:
-            The maximum sequence length for the model. This should be a multiple of 8.
-        :param meta_fields_to_rank:
-            List of meta fields that should be concatenated with the document content for reranking.
-        :param ranking_separator:
-            Separator to concatenate metadata fields to the document.
-        :param score_threshold:
-            Use it to return documents with a score above this threshold only.
-        :param model_kwargs:
-            Additional keyword arguments for `AutoModelForCausalLM.from_pretrained`
-            when loading the model. Refer to specific model documentation for available kwargs.
-        :param tokenizer_kwargs:
-            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-            Refer to specific model documentation for available kwargs.
-        :param batch_size:
-            The batch size to use for inference. The higher the batch size, the more memory is required.
-            If you run into memory issues, reduce the batch size.
+        Parameters:
+            model (Union[str, Path]): The ranking model. Pass a local path or the Hugging Face model name of a MxbaiRerankV2 model.
+            device (Optional[ComponentDevice]): The device on which the model is loaded. If `None`, overrides the default device.
+            top_k (int): The maximum number of documents to return per query.
+            max_length (int): The maximum sequence length for the model. This should be a multiple of 8.
+            meta_fields_to_rank (Optional[List[str]]): List of meta fields that should be concatenated with the document content for reranking.
+            ranking_separator (str): Separator to concatenate metadata fields to the document.
+            score_threshold (Optional[float]): Use it to return documents with a score above this threshold only.
+            model_kwargs (Optional[Dict[str, Any]]): Additional keyword arguments for `AutoModelForCausalLM.from_pretrained`
+                when loading the model. Refer to specific model documentation for available kwargs.
+            tokenizer_kwargs (Optional[Dict[str, Any]]): Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+                Refer to specific model documentation for available kwargs.
+            batch_size (int): The batch size to use for inference. The higher the batch size, the more memory is required.
+                If you run into memory issues, reduce the batch size.
+
+        Raises:
+            ValueError: If `max_length` is not a multiple of 8.
         """
+        if max_length % 8 != 0:
+            raise ValueError(f"max_length must be a multiple of 8, got {max_length}")
+        
         self.model = model
         self.device = device
         self.top_k = top_k
@@ -84,18 +81,24 @@ class LocalMixedbreadAIRerankerV2:
         self.batch_size = batch_size
         self._torch_model = None
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
+
+        Raises:
+            RuntimeError: If the model fails to load.
         """
-        resolved_model_kwargs = resolve_hf_device_map(device=self.device, model_kwargs=self.model_kwargs)
-        resolved_kwargs = {
-            "torch_dtype": resolved_model_kwargs.get("torch_dtype", None),
-            "max_length": self.max_length,
-            "tokenizer_kwargs": self.tokenizer_kwargs or {},
-            **resolved_model_kwargs,
-        }
-        self._torch_model = MxbaiRerankV2(self.model, **resolved_kwargs)
+        try:
+            resolved_model_kwargs = resolve_hf_device_map(device=self.device, model_kwargs=self.model_kwargs)
+            resolved_kwargs = {
+                "torch_dtype": resolved_model_kwargs.get("torch_dtype", None),
+                "max_length": self.max_length,
+                "tokenizer_kwargs": self.tokenizer_kwargs or {},
+                **resolved_model_kwargs,
+            }
+            self._torch_model = MxbaiRerankV2(self.model, **resolved_kwargs)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model '{self.model}': {str(e)}") from e
 
     @component.output_types(documents=List[Document])
     def run(
@@ -108,21 +111,18 @@ class LocalMixedbreadAIRerankerV2:
         """
         Ranks the documents based on relevance to the query using MixedBread Reranker.
 
-        :param query:
-            The input query to compare the documents to.
-        :param documents:
-            A list of documents to be ranked.
-        :param top_k:
-            The maximum number of documents to return.
-        :param score_threshold:
-            Use it to return documents only with a score above this threshold.
+        Parameters:
+            query (str): The input query to compare the documents to.
+            documents (List[Document]): A list of documents to be ranked.
+            top_k (Optional[int]): The maximum number of documents to return.
+            score_threshold (Optional[float]): Use it to return documents only with a score above this threshold.
 
-        :returns:
-            A dictionary with the following keys:
-            - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
+        Returns:
+            Dict[str, Any]: A dictionary with the following keys:
+                - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
 
-        :raises RuntimeError:
-            If the model is not loaded because `warm_up()` was not called before.
+        Raises:
+            RuntimeError: If the model is not loaded because `warm_up()` was not called before.
         """
         if self._torch_model is None:
             raise RuntimeError(
@@ -168,14 +168,15 @@ class LocalMixedbreadAIRerankerV2:
         """
         Serializes the component to a dictionary.
 
-        :returns:
-            Dictionary with serialized data.
+        Returns:
+            Dict[str, Any]: Dictionary with serialized data.
         """
         serialization_dict = default_to_dict(
             self,
             device=self.device.to_dict() if self.device else None,
             model=self.model,
             top_k=self.top_k,
+            max_length=self.max_length,
             meta_fields_to_rank=self.meta_fields_to_rank,
             ranking_separator=self.ranking_separator,
             score_threshold=self.score_threshold,
@@ -191,10 +192,11 @@ class LocalMixedbreadAIRerankerV2:
         """
         Deserializes the component from a dictionary.
 
-        :param data:
-            Dictionary to deserialize from.
-        :returns:
-            Deserialized component.
+        Parameters:
+            data (Dict[str, Any]): Dictionary to deserialize from.
+
+        Returns:
+            LocalMixedbreadAIRerankerV2: Deserialized component.
         """
         init_params = data["init_parameters"]
 
