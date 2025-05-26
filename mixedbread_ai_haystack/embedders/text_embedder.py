@@ -54,16 +54,16 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
     """
 
     def __init__(
-            self,
-            model: str = "mixedbread-ai/mxbai-embed-large-v1",
-            prefix: str = "",
-            suffix: str = "",
-            normalized: bool = True,
-            encoding_format: EncodingFormat = EncodingFormat.FLOAT,
-            truncation_strategy: TruncationStrategy = TruncationStrategy.START,
-            dimensions: Optional[int] = None,
-            prompt: Optional[str] = None,
-            **kwargs
+        self,
+        model: str = "mixedbread-ai/mxbai-embed-large-v1",
+        prefix: str = "",
+        suffix: str = "",
+        normalized: bool = True,
+        encoding_format: EncodingFormat = EncodingFormat.FLOAT,
+        truncation_strategy: TruncationStrategy = TruncationStrategy.START,
+        dimensions: Optional[int] = None,
+        prompt: Optional[str] = None,
+        **kwargs,
     ):
         super(MixedbreadAITextEmbedder, self).__init__(**kwargs)
 
@@ -83,19 +83,22 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
         Returns:
             Dict[str, Any]: The serialized component data.
         """
-        parent_params = super(MixedbreadAITextEmbedder, self).to_dict()["init_parameters"]
+        parent_params = super(MixedbreadAITextEmbedder, self).to_dict()[
+            "init_parameters"
+        ]
 
-        return default_to_dict(self,
-                               **parent_params,
-                               model=self.model,
-                               prefix=self.prefix,
-                               suffix=self.suffix,
-                               normalized=self.normalized,
-                               encoding_format=self.encoding_format,
-                               truncation_strategy=self.truncation_strategy,
-                               dimensions=self.dimensions,
-                               prompt=self.prompt
-                               )
+        return default_to_dict(
+            self,
+            **parent_params,
+            model=self.model,
+            prefix=self.prefix,
+            suffix=self.suffix,
+            normalized=self.normalized,
+            encoding_format=self.encoding_format,
+            truncation_strategy=self.truncation_strategy,
+            dimensions=self.dimensions,
+            prompt=self.prompt,
+        )
 
     @component.output_types(embedding=List[float], meta=EmbedderMeta)
     def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
@@ -129,13 +132,12 @@ class MixedbreadAITextEmbedder(MixedbreadAIClient):
             truncation_strategy=self.truncation_strategy,
             dimensions=self.dimensions,
             prompt=prompt or self.prompt,
-            request_options=self._request_options
+            request_options=self._request_options,
         )
 
         return {
             "embedding": response.data[0].embedding,
             "meta": EmbedderMeta(
-                **response.dict(exclude={"data", "usage"}),
-                usage=response.usage
-            )
+                **response.dict(exclude={"data", "usage"}), usage=response.usage
+            ),
         }

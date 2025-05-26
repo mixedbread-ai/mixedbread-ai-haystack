@@ -78,7 +78,9 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         )
 
     @component.output_types(documents=List[Document], meta=RerankerMeta)
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict[str, Any]:
+    def run(
+        self, query: str, documents: List[Document], top_k: Optional[int] = None
+    ) -> Dict[str, Any]:
         """
         Uses the Mixedbread Reranker to re-rank the list of documents based on the query.
 
@@ -108,7 +110,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             rank_fields=rank_fields,
             top_k=top_k,
             return_input=False,
-            request_options=self._request_options
+            request_options=self._request_options,
         )
 
         sorted_docs = []
@@ -121,6 +123,6 @@ class MixedbreadAIReranker(MixedbreadAIClient):
             "documents": sorted_docs,
             "meta": RerankerMeta(
                 **response.dict(exclude={"data", "usage", "return_input"}),
-                usage=response.usage
-            )
+                usage=response.usage,
+            ),
         }

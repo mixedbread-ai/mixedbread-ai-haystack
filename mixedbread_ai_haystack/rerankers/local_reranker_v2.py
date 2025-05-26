@@ -5,23 +5,27 @@ from mxbai_rerank import MxbaiRerankV2
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import ComponentDevice
-from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.hf import (
+    deserialize_hf_model_kwargs,
+    resolve_hf_device_map,
+    serialize_hf_model_kwargs,
+)
 
 
 @component
-class LocalMixedbreadAIRerankerV2:
+class LocalMixedbreadRerankV2:
     """
     Ranks documents based on their semantic similarity to the query.
 
     It uses a pre-trained model from the MixedBread AI library to evaluate the relevance of documents to a given query.
-    
+
     ### Usage example
 
     ```python
     from haystack import Document
-    from mixedbread_ai_haystack.rerankers.local_reranker_v2 import LocalMixedbreadAIRerankerV2
+    from mixedbread_ai_haystack.rerankers.local_reranker_v2 import LocalMixedbreadRerankV2
 
-    ranker = LocalMixedbreadAIRerankerV2()
+    ranker = LocalMixedbreadRerankV2()
     ranker.warm_up()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
@@ -68,7 +72,7 @@ class LocalMixedbreadAIRerankerV2:
         """
         if max_length % 8 != 0:
             raise ValueError(f"max_length must be a multiple of 8, got {max_length}")
-        
+
         self.model = model
         self.device = device
         self.top_k = top_k
@@ -88,17 +92,16 @@ class LocalMixedbreadAIRerankerV2:
         Raises:
             RuntimeError: If the model fails to load.
         """
-        try:
-            resolved_model_kwargs = resolve_hf_device_map(device=self.device, model_kwargs=self.model_kwargs)
-            resolved_kwargs = {
-                "torch_dtype": resolved_model_kwargs.get("torch_dtype", None),
-                "max_length": self.max_length,
-                "tokenizer_kwargs": self.tokenizer_kwargs or {},
-                **resolved_model_kwargs,
-            }
-            self._torch_model = MxbaiRerankV2(self.model, **resolved_kwargs)
-        except Exception as e:
-            raise RuntimeError(f"Failed to load model '{self.model}': {str(e)}") from e
+        resolved_model_kwargs = resolve_hf_device_map(
+            device=self.device, model_kwargs=self.model_kwargs
+        )
+        resolved_kwargs = {
+            "torch_dtype": resolved_model_kwargs.get("torch_dtype", None),
+            "max_length": self.max_length,
+            "tokenizer_kwargs": self.tokenizer_kwargs or {},
+            **resolved_model_kwargs,
+        }
+        self._torch_model = MxbaiRerankV2(self.model, **resolved_kwargs)
 
     @component.output_types(documents=List[Document])
     def run(
@@ -138,14 +141,23 @@ class LocalMixedbreadAIRerankerV2:
         texts = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_rank if key in doc.meta and doc.meta[key]
+                str(doc.meta[key])
+                for key in self.meta_fields_to_rank
+                if key in doc.meta and doc.meta[key]
             ]
-            text_to_embed = self.ranking_separator.join(meta_values_to_embed + [doc.content or ""])
+            text_to_embed = self.ranking_separator.join(
+                meta_values_to_embed + [doc.content or ""]
+            )
             texts.append(text_to_embed)
 
         # Rank and get scores
         ranked_results = self._torch_model.rank(
-            query=query, documents=texts, top_k=top_k, return_documents=True, sort=True, batch_size=self.batch_size
+            query=query,
+            documents=texts,
+            top_k=top_k,
+            return_documents=True,
+            sort=True,
+            batch_size=self.batch_size,
         )
 
         # Create new document list with scores
@@ -188,7 +200,7 @@ class LocalMixedbreadAIRerankerV2:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LocalMixedbreadAIRerankerV2":
+    def from_dict(cls, data: Dict[str, Any]) -> "LocalMixedbreadRerankV2":
         """
         Deserializes the component from a dictionary.
 
@@ -196,7 +208,7 @@ class LocalMixedbreadAIRerankerV2:
             data (Dict[str, Any]): Dictionary to deserialize from.
 
         Returns:
-            LocalMixedbreadAIRerankerV2: Deserialized component.
+            LocalMixedbreadRerankV2: Deserialized component.
         """
         init_params = data["init_parameters"]
 

@@ -20,12 +20,16 @@ def mock_embeddings_response():
             normalized=normalized,
             encoding_format=encoding_format,
             dimensions=3,
-            data=[Embedding(index=i, embedding=[0.1, 0.2, 0.3], object="embedding") for i in range(len(inputs))],
+            data=[
+                Embedding(index=i, embedding=[0.1, 0.2, 0.3], object="embedding")
+                for i in range(len(inputs))
+            ],
         )
         return mock_response
 
-    with patch("mixedbread_ai.client.MixedbreadAI.embeddings",
-               side_effect=mocking) as mock_embeddings_response:
+    with patch(
+        "mixedbread_ai.client.MixedbreadAI.embeddings", side_effect=mocking
+    ) as mock_embeddings_response:
         yield mock_embeddings_response
 
 
@@ -49,7 +53,7 @@ def mock_reranking_response():
         )
         return mock_response
 
-    with patch("mixedbread_ai.client.MixedbreadAI.reranking",
-               side_effect=mocking) as mock_reranking_response:
+    with patch(
+        "mixedbread_ai.client.MixedbreadAI.reranking", side_effect=mocking
+    ) as mock_reranking_response:
         yield mock_reranking_response
-

@@ -8,7 +8,9 @@ from haystack.utils.device import ComponentDevice
 
 from mxbai_rerank.base import RankResult
 
-from mixedbread_ai_haystack.rerankers.local_reranker_v2 import LocalMixedbreadAIRerankerV2
+from mixedbread_ai_haystack.rerankers.local_reranker_v2 import (
+    LocalMixedbreadAIRerankerV2,
+)
 
 
 class TestSimilarityRanker:
@@ -96,7 +98,12 @@ class TestSimilarityRanker:
         ranker._torch_model = MagicMock()
         ranker._torch_model.rank.return_value = []
 
-        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+        documents = [
+            Document(
+                content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}
+            )
+            for i in range(5)
+        ]
         ranker.run(query="test", documents=documents)
         ranker._torch_model.rank(
             query="test",
@@ -119,7 +126,7 @@ class TestSimilarityRanker:
         ranker._torch_model.rank.return_value = [
             RankResult(index=2, score=4.54, document="Sarajevo"),
             RankResult(index=1, score=4.41, document="Belgrade"),
-            RankResult(index=0, score=-1.0, document="Berlin")
+            RankResult(index=0, score=-1.0, document="Berlin"),
         ]
 
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -139,7 +146,7 @@ class TestSimilarityRanker:
         sampler = LocalMixedbreadAIRerankerV2()
         with pytest.raises(RuntimeError):
             sampler.run(query="query", documents=[Document(content="document")])
-    
+
     def test_max_length_validation(self):
         with pytest.raises(ValueError, match="max_length must be a multiple of 8"):
             LocalMixedbreadAIRerankerV2(max_length=8191)
