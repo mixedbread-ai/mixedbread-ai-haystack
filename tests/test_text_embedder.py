@@ -1,11 +1,6 @@
-import os
-
 import pytest
 from haystack.utils import Secret
-from mixedbread.types.embedding_create_response import Usage as EmbeddingUsage
-
 from mixedbread_ai_haystack.embedders import MixedbreadTextEmbedder
-from mixedbread_ai_haystack.embedders.text_embedder import TextEmbedderMeta
 from .test_config import TestConfig
 
 DEFAULT_VALUES = {
@@ -59,7 +54,6 @@ class TestMixedbreadTextEmbedder:
             normalized=False,
             encoding_format="binary",
             dimensions=500,
-            prompt="prompt",
             prompt="prompt",
         )
 

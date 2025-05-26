@@ -1,9 +1,6 @@
-import os
-
 import pytest
 from haystack import Document
 from haystack.utils.auth import Secret
-
 from mixedbread_ai_haystack.rerankers import MixedbreadReranker
 from .test_config import TestConfig
 

@@ -1,11 +1,7 @@
-import os
 import pytest
 from haystack import Document
 from haystack.utils import Secret
-
-from mixedbread.types.embedding_create_response import Usage
 from mixedbread_ai_haystack.embedders import MixedbreadDocumentEmbedder
-from mixedbread_ai_haystack.embedders.text_embedder import TextEmbedderMeta
 from .test_config import TestConfig
 
 DEFAULT_VALUES = {
