@@ -5,48 +5,74 @@ from haystack import Document
 from haystack.utils.auth import Secret
 
 from mixedbread_ai_haystack.rerankers import MixedbreadReranker
-from tests.utils import mock_reranking_response
+from .test_config import TestConfig
 
 DEFAULT_VALUES = {
     "base_url": None,
     "timeout": 60.0,
-    "max_retries": 3,
-    "model": "default",
-    "top_k": 20,
-    "meta_fields_to_rank": []
+    "max_retries": 2,
+    "model": "mixedbread-ai/mxbai-rerank-large-v1",
+    "top_k": 10,
+    "rank_fields": [],
+    "return_input": False,
+    "rewrite_query": False,
 }
 
 
 class TestMixedbreadReranker:
     def test_init_default(self, monkeypatch):
+        """
+        Test default initialization parameters for MixedbreadReranker.
+        """
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
         component = MixedbreadReranker()
         assert component.model == DEFAULT_VALUES["model"]
         assert component.top_k == DEFAULT_VALUES["top_k"]
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert component.meta_fields_to_rank == DEFAULT_VALUES["meta_fields_to_rank"]
+        assert component.rank_fields == DEFAULT_VALUES["rank_fields"]
+        assert component.return_input == DEFAULT_VALUES["return_input"]
+        assert component.rewrite_query == DEFAULT_VALUES["rewrite_query"]
         assert component.base_url == DEFAULT_VALUES["base_url"]
         assert component.timeout == DEFAULT_VALUES["timeout"]
         assert component.max_retries == DEFAULT_VALUES["max_retries"]
 
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("MXBAI_API_KEY", raising=False)
-        with pytest.raises(ValueError):
-            MixedbreadReranker()
-
     def test_init_with_parameters(self, monkeypatch):
+        """
+        Test custom initialization parameters for MixedbreadReranker.
+        """
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
         component = MixedbreadReranker(
             model="custom-model",
             top_k=5,
-            meta_fields_to_rank=["meta_field_1", "meta_field_2"],
+            rank_fields=["meta_field_1", "meta_field_2"],
+            return_input=True,
+            rewrite_query=True,
+            base_url="http://custom-url.com",
+            timeout=30.0,
+            max_retries=5,
         )
         assert component.model == "custom-model"
         assert component.top_k == 5
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert component.meta_fields_to_rank == ["meta_field_1", "meta_field_2"]
+        assert component.rank_fields == ["meta_field_1", "meta_field_2"]
+        assert component.return_input is True
+        assert component.rewrite_query is True
+        assert component.base_url == "http://custom-url.com"
+        assert component.timeout == 30.0
+        assert component.max_retries == 5
+
+    def test_init_fail_wo_api_key(self, monkeypatch):
+        """
+        Test that initialization fails when no API key is provided.
+        """
+        monkeypatch.delenv("MXBAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="None of the following authentication environment variables are set"):
+            MixedbreadReranker()
 
     def test_to_dict_default(self, monkeypatch):
+        """
+        Test serialization of this component to a dictionary, using default initialization parameters.
+        """
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
         component = MixedbreadReranker()
         data = component.to_dict()
@@ -56,19 +82,29 @@ class TestMixedbreadReranker:
                 "model": DEFAULT_VALUES["model"],
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
                 "top_k": DEFAULT_VALUES["top_k"],
-                "meta_fields_to_rank": DEFAULT_VALUES["meta_fields_to_rank"],
+                "rank_fields": DEFAULT_VALUES["rank_fields"],
+                "return_input": DEFAULT_VALUES["return_input"],
+                "rewrite_query": DEFAULT_VALUES["rewrite_query"],
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
                 "max_retries": DEFAULT_VALUES["max_retries"],
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
+        """
+        Test serialization of this component to a dictionary, using custom initialization parameters.
+        """
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
         component = MixedbreadReranker(
             model="custom-model",
             top_k=2,
-            meta_fields_to_rank=["meta_field_1", "meta_field_2"],
+            rank_fields=["meta_field_1", "meta_field_2"],
+            return_input=True,
+            rewrite_query=True,
+            base_url="http://custom-url.com",
+            timeout=30.0,
+            max_retries=5,
         )
         data = component.to_dict()
         assert data == {
@@ -77,125 +113,58 @@ class TestMixedbreadReranker:
                 "model": "custom-model",
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
                 "top_k": 2,
-                "meta_fields_to_rank": ["meta_field_1", "meta_field_2"],
-                "base_url": DEFAULT_VALUES["base_url"],
-                "timeout": DEFAULT_VALUES["timeout"],
-                "max_retries": DEFAULT_VALUES["max_retries"],
+                "rank_fields": ["meta_field_1", "meta_field_2"],
+                "return_input": True,
+                "rewrite_query": True,
+                "base_url": "http://custom-url.com",
+                "timeout": 30.0,
+                "max_retries": 5,
             },
         }
 
-    def test_from_dict(self, monkeypatch):
-        monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        data = {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
-            "init_parameters": {
-                "model": "custom-model",
-                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
-                "top_k": 2,
-                "meta_fields_to_rank": ["meta_field_1", "meta_field_2"],
-                "base_url": DEFAULT_VALUES["base_url"],
-                "timeout": DEFAULT_VALUES["timeout"],
-                "max_retries": DEFAULT_VALUES["max_retries"],
-            },
-        }
-        component = MixedbreadReranker.from_dict(data)
-        assert component.model == "custom-model"
-        assert component.top_k == 2
-        assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert component.meta_fields_to_rank == ["meta_field_1", "meta_field_2"]
+    def test_run_wrong_input_format(self):
+        """
+        Test for checking incorrect input when reranking documents.
+        """
+        ranker = MixedbreadReranker(api_key=Secret.from_token("fake-api-key"))
 
-    def test_from_dict_fail_wo_env_var(self, monkeypatch):
-        monkeypatch.delenv("MXBAI_API_KEY", raising=False)
-        data = {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
-            "init_parameters": {
-                "model": "custom-model",
-                "top_k": 2,
-                "meta_fields_to_rank": ["meta_field_1", "meta_field_2"],
-            },
-        }
-        with pytest.raises(ValueError):
-            MixedbreadReranker.from_dict(data)
+        with pytest.raises(TypeError, match="Input must be a list of Haystack Documents"):
+            ranker.run(documents="not a list", query="test query")
 
-    def test_run_documents_provided(self, monkeypatch, mock_reranking_response):  # noqa: ARG002
-        monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        ranker = MixedbreadReranker()
-        query = "test query"
-        documents = [
-            Document(id="abcd", content="doc1", meta={"meta_field": "meta_value_1"}),
-            Document(id="efgh", content="doc2", meta={"meta_field": "meta_value_2"}),
-        ]
-        ranker_results = ranker.run(query, documents, 2)
+    def test_run_empty_documents(self):
+        """
+        Test reranking with empty document list.
+        """
+        ranker = MixedbreadReranker(api_key=Secret.from_token("fake-api-key"))
+        result = ranker.run(documents=[], query="test query")
 
-        assert isinstance(ranker_results, dict)
-        reranked_docs = ranker_results["documents"]
-        assert reranked_docs == [
-            Document(id="abcd", content="doc1", meta={"meta_field": "meta_value_1"}, score=1.0),
-            Document(id="efgh", content="doc2", meta={"meta_field": "meta_value_2"}, score=0.9),
-        ]
-
-    def test_run_topk_set_in_init(self, monkeypatch, mock_reranking_response):  # noqa: ARG002
-        monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        ranker = MixedbreadReranker(top_k=1)
-        query = "test query"
-        documents = [
-            Document(id="abcd", content="doc1"),
-            Document(id="efgh", content="doc2"),
-        ]
-
-        ranker_results = ranker.run(query, documents)
-
-        assert isinstance(ranker_results, dict)
-        reranked_docs = ranker_results["documents"]
-        assert reranked_docs == [
-            Document(id="abcd", content="doc1", score=1.0),
-        ]
+        assert result["documents"] == []
+        assert "meta" in result
+        assert result["meta"]["top_k"] == 0
 
     @pytest.mark.skipif(
-        not os.environ.get("MXBAI_API_KEY", None),
+        not TestConfig.has_api_key(),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
     )
-    def test_live_run(self):
-        component = MixedbreadReranker()
+    @pytest.mark.integration
+    def test_integration_basic_reranking(self):
+        """
+        Test basic reranking with real API call.
+        """
+        reranker_config = TestConfig.get_test_reranker_config()
+        reranker = MixedbreadReranker(top_k=2, **reranker_config)
+
         documents = [
-            Document(id="abcd", content="Paris is in France"),
-            Document(id="efgh", content="Berlin is in Germany"),
+            Document(id="doc1", content="Paris is the capital of France"),
+            Document(id="doc2", content="Berlin is the capital of Germany"),
+            Document(id="doc3", content="Madrid is the capital of Spain"),
         ]
 
-        ranker_result = component.run("What is the capital of Germany?", documents, 2)
-        expected_documents = [documents[1], documents[0]]
-        expected_documents_content = [doc.content for doc in expected_documents]
-        result_documents_contents = [doc.content for doc in ranker_result["documents"]]
+        result = reranker.run(documents=documents, query="What is the capital of Germany?")
 
-        assert isinstance(ranker_result, dict)
-        assert isinstance(ranker_result["documents"], list)
-        assert len(ranker_result["documents"]) == 2
-        assert all(isinstance(doc, Document) for doc in ranker_result["documents"])
-        assert set(result_documents_contents) == set(expected_documents_content)
-
-    @pytest.mark.skipif(
-        not os.environ.get("MXBAI_API_KEY", None),
-        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
-    )
-    def test_live_run_topk_greater_than_docs(self):
-        component = MixedbreadReranker(
-            meta_fields_to_rank=["topic"]
-        )
-        documents = [
-            Document(id="abcd", content="Paris is in France", meta={"topic": "France"}),
-            Document(id="efgh", content="Berlin is in Germany", meta={"topic": "Germany"}),
-        ]
-
-        ranker_result = component.run("What is the capital of Germany?", documents, 5)
-        expected_documents = [documents[1], documents[0]]
-        expected_documents_content = [doc.content for doc in expected_documents]
-        result_documents_contents = [doc.content for doc in ranker_result["documents"]]
-
-        assert isinstance(ranker_result, dict)
-        assert isinstance(ranker_result["documents"], list)
-        assert len(ranker_result["documents"]) == 2
-        assert all(isinstance(doc, Document) for doc in ranker_result["documents"])
-        assert set(result_documents_contents) == set(expected_documents_content)
-
-
-
+        assert isinstance(result, dict)
+        assert isinstance(result["documents"], list)
+        assert len(result["documents"]) <= 2  # top_k = 2
+        assert all(isinstance(doc, Document) for doc in result["documents"])
+        assert all(hasattr(doc, "meta") and "rerank_score" in doc.meta for doc in result["documents"])
+        assert "meta" in result

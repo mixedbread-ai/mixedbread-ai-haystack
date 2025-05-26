@@ -1,228 +1,215 @@
-from typing import Optional, List, Dict, Any, Literal
-import concurrent
+import asyncio
+from typing import Optional, List, Dict, Any, Literal, Union
 
-from haystack import component, Document, default_to_dict
-from mixedbread.types import EmbeddingCreateResponse
-from mixedbread.types.embedding_create_response import Usage
+from haystack import component, Document, default_to_dict, default_from_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
+from mixedbread.types.shared import Usage as MixedUsage
 
-from mixedbread_ai_haystack.embedders import MixedbreadTextEmbedder
-from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
+from mixedbread_ai_haystack.common.client import MixedbreadClient
+from mixedbread_ai_haystack.embedders.embedding_types import MixedbreadEmbeddingType
+from mixedbread_ai_haystack.embedders.utils import get_embedding_response, get_async_embedding_response
+from mixedbread_ai_haystack.embedders.text_embedder import TextEmbedderMeta
 
 try:
     from tqdm import tqdm
-    has_progress_bar = True
+
+    HAS_TQDM = True
 except ImportError:
-    has_progress_bar = False
+    HAS_TQDM = False
+
     def tqdm(iterable, *args, **kwargs):
         return iterable
 
+
 @component
-class MixedbreadDocumentEmbedder(MixedbreadTextEmbedder):
+class MixedbreadDocumentEmbedder(MixedbreadClient):
     """
-    A component for generating document embeddings using Mixedbread's embedding API.
-    The embedding of each Document is stored in the `embedding` field of the Document.
-
-    Find out more at https://mixedbread.com/docs
-
-    This implementation uses the embeddings API.
-
-    To use this you'll need a Mixedbread API key - either pass it to
-    the api_key parameter or set the MXBAI_API_KEY environment variable.
-
-    API keys are available on https://mixedbread.com - it's free to sign up and trial API
-    keys work with this implementation.
-
-    Usage example:
-    ```python
-    from haystack import Document
-    from mixedbread_ai_haystack import MixedbreadDocumentEmbedder
-
-    doc = Document(content="The quick brown fox jumps over the lazy dog")
-
-    document_embedder = MixedbreadDocumentEmbedder()
-
-    result = document_embedder.run([doc])
-    print(result['documents'][0].embedding)
-    ```
-
-    Attributes:
-        batch_size (int): The size of batches for processing documents.
-        show_progress_bar (bool): Whether to show a progress bar during embedding computation.
-        embedding_separator (str): The separator to use between different parts of the document when embedding.
-        meta_fields_to_embed (Optional[List[str]]): List of metadata fields to include in the embedding process.
+    Embeds Haystack Documents using Mixedbread AI.
     """
 
     def __init__(
-            self,
-            batch_size: int = 128,
-            show_progress_bar: bool = False,
-            embedding_separator: str = "\n",
-            max_concurrency: int = 1,
-            meta_fields_to_embed: Optional[List[str]] = None,
-            **kwargs
+        self,
+        api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
+        model: str = "mixedbread-ai/mxbai-embed-large-v1",
+        prefix: str = "",
+        suffix: str = "",
+        normalized: bool = True,
+        encoding_format: Union[str, MixedbreadEmbeddingType] = MixedbreadEmbeddingType.FLOAT,
+        dimensions: Optional[int] = None,
+        prompt: Optional[str] = None,
+        batch_size: int = 128,
+        progress_bar: bool = True,
+        embedding_separator: str = "\n",
+        meta_fields_to_embed: Optional[List[str]] = None,
+        base_url: Optional[str] = None,
+        timeout: Optional[float] = 60.0,
+        max_retries: Optional[int] = 2,
     ):
-        super(MixedbreadDocumentEmbedder, self).__init__(**kwargs)
+        super(MixedbreadDocumentEmbedder, self).__init__(
+            api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries
+        )
 
-        if max_concurrency < 1:
-            raise ValueError("The max_concurrency parameter must be greater than 0.")
-        if batch_size < 1 or batch_size > 256:
-            raise ValueError("The batch_size parameter must be between 1 and 256.")
-        if not has_progress_bar and show_progress_bar:
-            raise ImportError(
-                "The package 'tqdm' must be installed to use the progress bar. "
-                "You can install it via 'pip install tqdm'."
-            )
+        if not (1 <= batch_size <= 256):  # Check SDK for actual limits if any
+            raise ValueError("batch_size must be between 1 and 256.")
+        if progress_bar and not HAS_TQDM:
+            raise ImportError("tqdm is not installed. Please install it to use the progress bar.")
 
+        self.model = model
+        self.prefix = prefix
+        self.suffix = suffix
+        self.normalized = normalized
+        if isinstance(encoding_format, str):
+            self.encoding_format = MixedbreadEmbeddingType.from_str(encoding_format)
+        else:
+            self.encoding_format = encoding_format
+        self.dimensions = dimensions
+        self.prompt = prompt
         self.batch_size = batch_size
-        self.show_progress_bar = show_progress_bar
+        self.progress_bar = progress_bar
         self.embedding_separator = embedding_separator
         self.meta_fields_to_embed = meta_fields_to_embed or []
-        self.max_concurrency = max_concurrency
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Serializes the component to a dictionary.
-
-        Returns:
-            Dict[str, Any]: The serialized component data.
-        """
-        parent_params = super(MixedbreadDocumentEmbedder, self).to_dict()["init_parameters"]
-
+        client_params = MixedbreadClient.to_dict(self)["init_parameters"]
         return default_to_dict(
             self,
-            **parent_params,
+            **client_params,
+            model=self.model,
+            prefix=self.prefix,
+            suffix=self.suffix,
+            normalized=self.normalized,
+            encoding_format=self.encoding_format.value,
+            dimensions=self.dimensions,
+            prompt=self.prompt,
             batch_size=self.batch_size,
-            show_progress_bar=self.show_progress_bar,
+            progress_bar=self.progress_bar,
             embedding_separator=self.embedding_separator,
-            meta_fields_to_embed=self.meta_fields_to_embed
+            meta_fields_to_embed=self.meta_fields_to_embed,
         )
 
-    def _documents_to_texts(self, docs: List[Document]) -> List[str]:
-        """
-        Converts a list of documents to a list of strings to be embedded.
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadDocumentEmbedder":
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        ef_val = data["init_parameters"].get("encoding_format")
+        if isinstance(ef_val, str):
+            data["init_parameters"]["encoding_format"] = MixedbreadEmbeddingType.from_str(ef_val)
+        return default_from_dict(cls, data)
 
-        Parameters:
-            docs (List[Document]): The documents to convert.
-
-        Returns:
-            List[str]: The converted list of strings.
-        """
-        def prepare_doc(doc: Document) -> str:
-            values_to_embed = [
-                str(doc.meta[key])
-                for key in self.meta_fields_to_embed
-                if key in doc.meta and doc.meta[key] is not None
-            ]
-            if doc.content:
-                values_to_embed.append(doc.content)
-
-            return self.embedding_separator.join(values_to_embed)
-
-        return [self.prefix + prepare_doc(doc) + self.suffix for doc in docs]
-
-    def _calculate_embeddings_single_thread(self, texts_to_embed: List[str]) -> List[EmbeddingCreateResponse]:
-        responses = []
-        batch_iter = tqdm(
-            range(0, len(texts_to_embed), self.batch_size),
-            disable=not self.show_progress_bar,
-            desc="MixedbreadDocumentEmbedder - Calculating embedding batches"
-        )
-
-        for i in batch_iter:
-            batch = texts_to_embed[i:i + self.batch_size]
-            # Create request parameters
-            params = {
-                "model": self.model,
-                "input": batch,
-                "normalized": self.normalized,
-                "encoding_format": self.encoding_format,
-                "dimensions": self.dimensions,
-                "prompt": self.prompt,
-                "request_options": self._request_options
-            }
-            response = self._client.embeddings.create(**params)
-            responses.append(response)
-        return responses
-
-    def _calculate_embeddings_multi_thread(self, texts_to_embed: List[str]):
-        def process_batch(batch):
-            # Create request parameters
-            params = {
-                "model": self.model,
-                "input": batch,
-                "normalized": self.normalized,
-                "encoding_format": self.encoding_format,
-                "dimensions": self.dimensions,
-                "prompt": self.prompt,
-                "request_options": self._request_options
-            }
-            return self._client.embeddings.create(**params)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
-            futures = [executor.submit(process_batch, texts_to_embed[i:i + self.batch_size]) 
-                       for i in range(0, len(texts_to_embed), self.batch_size)]
-            futures_iterator = tqdm(
-                concurrent.futures.as_completed(futures),
-                total=len(futures),
-                desc="MixedbreadDocumentEmbedder - Calculating embedding batches",
-                disable=not self.show_progress_bar
+    def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
+        texts = []
+        for doc in documents:
+            meta_content = self.embedding_separator.join(
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if doc.meta.get(key) is not None
             )
-            responses = [future.result() for future in futures_iterator]
+            content_to_embed = doc.content or ""
+            if meta_content and content_to_embed:
+                full_text = meta_content + self.embedding_separator + content_to_embed
+            elif meta_content:
+                full_text = meta_content
+            else:
+                full_text = content_to_embed
+            texts.append(f"{self.prefix}{full_text}{self.suffix}")
+        return texts
 
-        return responses
-
-    @component.output_types(documents=List[Document], meta=EmbedderMeta)
+    @component.output_types(documents=List[Document], meta=TextEmbedderMeta)
     def run(self, documents: List[Document], prompt: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Computes embeddings for a list of documents.
-
-        Parameters:
-            documents (List[Document]): The list of documents to embed.
-            prompt (Optional[str]): An optional prompt to use with the embedding model.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing the embeddings and metadata.
-
-        Raises:
-            TypeError: If the input is not a list of Documents.
-        """
-        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
-            raise TypeError(
-                "MixedbreadDocumentEmbedder expects a list of Documents as input."
-                " In case you want to embed a string, please use the MixedbreadTextEmbedder."
-            )
-
-        if len(documents) == 0:
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+            raise TypeError("Input must be a list of Haystack Documents.")
+        if not documents:
+            usage = MixedUsage(prompt_tokens=0, total_tokens=0)
             return {
                 "documents": [],
-                "meta": EmbedderMeta(
+                "meta": TextEmbedderMeta(
+                    usage=usage.model_dump(),
                     model=self.model,
+                    normalized=self.normalized,
+                    encoding_format=self.encoding_format.value,
+                    dimensions=self.dimensions,
                     object="list",
+                ),
+            }
+
+        texts_to_embed = self._prepare_texts_to_embed(documents)
+
+        all_embeddings: List[Union[List[float], List[int], str]] = []
+        final_meta: Optional[Dict[str, Any]] = None
+
+        for i in tqdm(
+            range(0, len(texts_to_embed), self.batch_size), disable=not self.progress_bar, desc="Embedding documents"
+        ):
+            batch_texts = texts_to_embed[i : i + self.batch_size]
+            embeddings_batch, meta_batch = get_embedding_response(
+                client=self.client,
+                texts=batch_texts,
+                model=self.model,
+                normalized=self.normalized,
+                encoding_format=self.encoding_format,
+                dimensions=self.dimensions,
+                prompt=prompt or self.prompt,
+            )
+            all_embeddings.extend(embeddings_batch)
+            if final_meta is None:
+                final_meta = meta_batch
+                final_meta["usage"] = meta_batch["usage"].copy()
+            else:
+                final_meta["usage"]["prompt_tokens"] += meta_batch["usage"]["prompt_tokens"]
+                final_meta["usage"]["total_tokens"] += meta_batch["usage"]["total_tokens"]
+
+        for doc, embedding in zip(documents, all_embeddings):
+            doc.embedding = embedding
+
+        return {"documents": documents, "meta": final_meta or {}}
+
+    @component.output_types(documents=List[Document], meta=TextEmbedderMeta)
+    async def run_async(self, documents: List[Document], prompt: Optional[str] = None) -> Dict[str, Any]:
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+            raise TypeError("Input must be a list of Haystack Documents.")
+        if not documents:
+            usage = MixedUsage(prompt_tokens=0, total_tokens=0)
+            return {
+                "documents": [],
+                "meta": TextEmbedderMeta(
+                    usage=usage.model_dump(),
+                    model=self.model,
+                    normalized=self.normalized,
+                    encoding_format=self.encoding_format.value,
+                    dimensions=self.dimensions,
+                    object="list",
+                ),
+            }
+
+        texts_to_embed = self._prepare_texts_to_embed(documents)
+
+        all_embeddings: List[Union[List[float], List[int], str]] = []
+        final_meta: Optional[Dict[str, Any]] = None
+
+        tasks = []
+        for i in range(0, len(texts_to_embed), self.batch_size):
+            batch_texts = texts_to_embed[i : i + self.batch_size]
+            tasks.append(
+                get_async_embedding_response(
+                    async_client=self.async_client,
+                    texts=batch_texts,
+                    model=self.model,
                     normalized=self.normalized,
                     encoding_format=self.encoding_format,
                     dimensions=self.dimensions,
-                    usage=Usage(
-                        prompt_tokens=0,
-                        total_tokens=0
-                    )
+                    prompt=prompt or self.prompt,
                 )
-            }
+            )
 
-        texts_to_embed = self._documents_to_texts(documents)
+        results = await asyncio.gather(*tasks)
 
-        if self.max_concurrency == 1:
-            responses = self._calculate_embeddings_single_thread(texts_to_embed)
-        else:
-            responses = self._calculate_embeddings_multi_thread(texts_to_embed)
+        for embeddings_batch, meta_batch in results:
+            all_embeddings.extend(embeddings_batch)
+            if final_meta is None:
+                final_meta = meta_batch
+                final_meta["usage"] = meta_batch["usage"].copy()
+            else:
+                final_meta["usage"]["prompt_tokens"] += meta_batch["usage"]["prompt_tokens"]
+                final_meta["usage"]["total_tokens"] += meta_batch["usage"]["total_tokens"]
 
-        embeddings = [item.embedding for response in responses for item in response.data]
-        for doc, embedding in zip(documents, embeddings):
+        for doc, embedding in zip(documents, all_embeddings):
             doc.embedding = embedding
 
-        meta = responses[0].model_dump(exclude={"data", "usage"})
-        meta["usage"] = Usage(
-            prompt_tokens=sum(response.usage.prompt_tokens for response in responses),
-            total_tokens=sum(response.usage.total_tokens for response in responses),
-        )
-
-        return {"documents": documents, "meta": EmbedderMeta(**meta)}
+        return {"documents": documents, "meta": final_meta or {}}
