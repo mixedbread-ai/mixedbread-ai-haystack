@@ -22,12 +22,12 @@ class MixedbreadAIClient:
     """
 
     def __init__(
-            self,
-            api_key: Union[Secret, str] = Secret.from_env_var("MXBAI_API_KEY"),
-            base_url: Optional[str] = None,
-            timeout: Optional[float] = 60.0,
-            max_retries: Optional[int] = 3,
-            httpx_client: Optional[httpx.Client] = None,  # not serialized
+        self,
+        api_key: Union[Secret, str] = Secret.from_env_var("MXBAI_API_KEY"),
+        base_url: Optional[str] = None,
+        timeout: Optional[float] = 60.0,
+        max_retries: Optional[int] = 3,
+        httpx_client: Optional[httpx.Client] = None,  # not serialized
     ):
         if api_key is None:
             raise ValueError(
@@ -40,7 +40,9 @@ class MixedbreadAIClient:
         if timeout is not None and timeout <= 0:
             raise ValueError("The timeout parameter must be greater than 0.")
         if max_retries is not None and max_retries < 0:
-            raise ValueError("The max_retries parameter must be greater than or equal to 0.")
+            raise ValueError(
+                "The max_retries parameter must be greater than or equal to 0."
+            )
 
         self.api_key = api_key
         self.base_url = base_url
@@ -55,7 +57,7 @@ class MixedbreadAIClient:
         self._client = MixedbreadAI(
             api_key=api_key.resolve_value(),
             base_url=base_url,
-            httpx_client=httpx_client
+            httpx_client=httpx_client,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,7 +72,7 @@ class MixedbreadAIClient:
             api_key=self.api_key.to_dict(),
             base_url=self.base_url,
             timeout=self.timeout,
-            max_retries=self.max_retries
+            max_retries=self.max_retries,
         )
 
     @classmethod

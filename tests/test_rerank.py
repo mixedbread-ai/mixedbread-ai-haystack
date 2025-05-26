@@ -13,7 +13,7 @@ DEFAULT_VALUES = {
     "max_retries": 3,
     "model": "default",
     "top_k": 20,
-    "meta_fields_to_rank": []
+    "meta_fields_to_rank": [],
 }
 
 
@@ -130,8 +130,18 @@ class TestMixedbreadAIReranker:
         assert isinstance(ranker_results, dict)
         reranked_docs = ranker_results["documents"]
         assert reranked_docs == [
-            Document(id="abcd", content="doc1", meta={"meta_field": "meta_value_1"}, score=1.0),
-            Document(id="efgh", content="doc2", meta={"meta_field": "meta_value_2"}, score=0.9),
+            Document(
+                id="abcd",
+                content="doc1",
+                meta={"meta_field": "meta_value_1"},
+                score=1.0,
+            ),
+            Document(
+                id="efgh",
+                content="doc2",
+                meta={"meta_field": "meta_value_2"},
+                score=0.9,
+            ),
         ]
 
     def test_run_topk_set_in_init(self, monkeypatch, mock_reranking_response):  # noqa: ARG002
@@ -178,12 +188,12 @@ class TestMixedbreadAIReranker:
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
     )
     def test_live_run_topk_greater_than_docs(self):
-        component = MixedbreadAIReranker(
-            meta_fields_to_rank=["topic"]
-        )
+        component = MixedbreadAIReranker(meta_fields_to_rank=["topic"])
         documents = [
             Document(id="abcd", content="Paris is in France", meta={"topic": "France"}),
-            Document(id="efgh", content="Berlin is in Germany", meta={"topic": "Germany"}),
+            Document(
+                id="efgh", content="Berlin is in Germany", meta={"topic": "Germany"}
+            ),
         ]
 
         ranker_result = component.run("What is the capital of Germany?", documents, 5)
@@ -196,6 +206,3 @@ class TestMixedbreadAIReranker:
         assert len(ranker_result["documents"]) == 2
         assert all(isinstance(doc, Document) for doc in ranker_result["documents"])
         assert set(result_documents_contents) == set(expected_documents_content)
-
-
-

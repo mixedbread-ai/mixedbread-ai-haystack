@@ -56,7 +56,7 @@ class TestMixedbreadAITextEmbedder:
             encoding_format=EncodingFormat.BINARY,
             truncation_strategy=TruncationStrategy.END,
             dimensions=500,
-            prompt="prompt"
+            prompt="prompt",
         )
 
         assert embedder.api_key == Secret.from_token("test-api-key")
@@ -84,11 +84,10 @@ class TestMixedbreadAITextEmbedder:
         data = component.to_dict()
         assert data == {
             "type": "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadAITextEmbedder",
-            "init_parameters":
-                {
-                    **DEFAULT_VALUES,
-                    "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict()
-                }
+            "init_parameters": {
+                **DEFAULT_VALUES,
+                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
+            },
         }
 
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
@@ -104,7 +103,7 @@ class TestMixedbreadAITextEmbedder:
             encoding_format=EncodingFormat.BINARY,
             truncation_strategy=TruncationStrategy.END,
             dimensions=500,
-            prompt="prompt"
+            prompt="prompt",
         )
         data = component.to_dict()
         assert data == {
@@ -131,7 +130,7 @@ class TestMixedbreadAITextEmbedder:
             api_key=Secret.from_token("fake-api-key"),
             model=model,
             prefix="prefix ",
-            suffix=" suffix"
+            suffix=" suffix",
         )
         result = embedder.run(text="The food was delicious")
 
@@ -143,7 +142,7 @@ class TestMixedbreadAITextEmbedder:
             object=ObjectType.LIST,
             normalized=True,
             encoding_format=EncodingFormat.FLOAT,
-            dimensions=3
+            dimensions=3,
         )
 
     def test_run_wrong_input_format(self):
@@ -151,9 +150,12 @@ class TestMixedbreadAITextEmbedder:
 
         list_integers_input = [1, 2, 3]
 
-        with pytest.raises(TypeError, match="MixedbreadAITextEmbedder expects a string as an input. "
-                                            "In case you want to embed a list of Documents, "
-                                            "please use the MixedbreadAIDocumentEmbedder."):
+        with pytest.raises(
+            TypeError,
+            match="MixedbreadAITextEmbedder expects a string as an input. "
+            "In case you want to embed a list of Documents, "
+            "please use the MixedbreadAIDocumentEmbedder.",
+        ):
             embedder.run(text=list_integers_input)
 
     @pytest.mark.skipif(

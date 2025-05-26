@@ -67,7 +67,6 @@ class TestMixedbreadAIDocumentEmbedder:
             truncation_strategy=TruncationStrategy.END,
             dimensions=500,
             prompt="prompt",
-
             batch_size=64,
             show_progress_bar=False,
             embedding_separator=" | ",
@@ -106,8 +105,8 @@ class TestMixedbreadAIDocumentEmbedder:
             "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAIDocumentEmbedder",
             "init_parameters": {
                 **DEFAULT_VALUES,
-                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict()
-            }
+                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
+            },
         }
 
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
@@ -124,7 +123,6 @@ class TestMixedbreadAIDocumentEmbedder:
             truncation_strategy=TruncationStrategy.END,
             dimensions=500,
             prompt="prompt",
-
             batch_size=64,
             show_progress_bar=False,
             meta_fields_to_embed=["test_field"],
@@ -146,7 +144,6 @@ class TestMixedbreadAIDocumentEmbedder:
                 "truncation_strategy": TruncationStrategy.END,
                 "dimensions": 500,
                 "prompt": "prompt",
-
                 "batch_size": 64,
                 "show_progress_bar": False,
                 "meta_fields_to_embed": ["test_field"],
@@ -156,11 +153,17 @@ class TestMixedbreadAIDocumentEmbedder:
 
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
-            Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
+            Document(
+                content=f"document number {i}:\ncontent",
+                meta={"meta_field": f"meta_value {i}"},
+            )
+            for i in range(5)
         ]
 
         embedder = MixedbreadAIDocumentEmbedder(
-            api_key=Secret.from_token("fake-api-key"), meta_fields_to_embed=["meta_field"], embedding_separator=" | "
+            api_key=Secret.from_token("fake-api-key"),
+            meta_fields_to_embed=["meta_field"],
+            embedding_separator=" | ",
         )
 
         prepared_texts = embedder._documents_to_texts(documents)
@@ -176,7 +179,11 @@ class TestMixedbreadAIDocumentEmbedder:
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
-        embedder = MixedbreadAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix")
+        embedder = MixedbreadAIDocumentEmbedder(
+            api_key=Secret.from_token("fake-api-key"),
+            prefix="my_prefix ",
+            suffix=" my_suffix",
+        )
 
         prepared_texts = embedder._documents_to_texts(documents)
 
@@ -191,8 +198,13 @@ class TestMixedbreadAIDocumentEmbedder:
     def test_run(self, mock_embeddings_response):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
-            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-            Document(content="Mixedbread AI is building yummy models", meta={"topic": "AI"})
+            Document(
+                content="A transformer is a deep learning architecture",
+                meta={"topic": "ML"},
+            ),
+            Document(
+                content="Mixedbread AI is building yummy models", meta={"topic": "AI"}
+            ),
         ]
 
         model = DEFAULT_VALUES["model"]
@@ -224,7 +236,7 @@ class TestMixedbreadAIDocumentEmbedder:
             object=ObjectType.LIST,
             normalized=True,
             encoding_format=EncodingFormat.FLOAT,
-            dimensions=3
+            dimensions=3,
         )
 
     @pytest.mark.skipif(
@@ -234,8 +246,11 @@ class TestMixedbreadAIDocumentEmbedder:
     def test_live_run_with_real_documents(self):
         docs = [
             Document(content="The Eiffel Tower is in Paris", meta={"topic": "Travel"}),
-            Document(content="Quantum mechanics is a fundamental theory in physics", meta={"topic": "Science"}),
-            Document(content="Baking bread requires yeast", meta={"topic": "Cooking"})
+            Document(
+                content="Quantum mechanics is a fundamental theory in physics",
+                meta={"topic": "Science"},
+            ),
+            Document(content="Baking bread requires yeast", meta={"topic": "Cooking"}),
         ]
 
         embedder = MixedbreadAIDocumentEmbedder(
