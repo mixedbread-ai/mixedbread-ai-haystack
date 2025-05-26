@@ -3,21 +3,21 @@ from typing import Any, Dict, Optional, Union
 import httpx
 from haystack import default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
-from mixedbread_ai.client import MixedbreadAI
-from mixedbread_ai.core import RequestOptions
+from mixedbread import Mixedbread
+from mixedbread import RequestOptions
 
 USER_AGENT = "@mixedbread-ai/haystack"
 
 
-class MixedbreadAIClient:
+class MixedbreadClient:
     """
-    Mixedbread AI Client configuration and initialization.
+    Mixedbread Client configuration and initialization.
 
     Attributes:
-        api_key (Secret): Mixedbread AI API key. Must be specified directly or via environment variable 'MXBAI_API_KEY'.
-        base_url (Optional[str]): Base URL for the Mixedbread AI API. Leave blank if not using a proxy or service emulator.
-        timeout (Optional[float]): Timeout for the Mixedbread AI API.
-        max_retries (Optional[int]): Max retries for the Mixedbread AI API.
+        api_key (Secret): Mixedbread API key. Must be specified directly or via environment variable 'MXBAI_API_KEY'.
+        base_url (Optional[str]): Base URL for the Mixedbread API. Leave blank if not using a proxy or service emulator.
+        timeout (Optional[float]): Timeout for the Mixedbread API.
+        max_retries (Optional[int]): Max retries for the Mixedbread API.
         httpx_client (Optional[httpx.Client]): An optional synchronous HTTPX client instance (not serialized).
     """
 
@@ -31,7 +31,7 @@ class MixedbreadAIClient:
     ):
         if api_key is None:
             raise ValueError(
-                "The Mixedbread AI API key must be specified."
+                "The Mixedbread API key must be specified."
                 + "You either pass it in the constructor using 'api_key'"
                 + "or via the 'MXBAI_API_KEY' environment variable."
             )
@@ -52,10 +52,10 @@ class MixedbreadAIClient:
             timeout_in_seconds=timeout,
             additional_headers={"User-Agent": USER_AGENT},
         )
-        self._client = MixedbreadAI(
+        self._client = Mixedbread(
             api_key=api_key.resolve_value(),
             base_url=base_url,
-            httpx_client=httpx_client
+            http_client=httpx_client
         )
 
     def to_dict(self) -> Dict[str, Any]:

@@ -4,7 +4,7 @@ import pytest
 from haystack import Document
 from haystack.utils.auth import Secret
 
-from mixedbread_ai_haystack.rerankers import MixedbreadAIReranker
+from mixedbread_ai_haystack.rerankers import MixedbreadReranker
 from tests.utils import mock_reranking_response
 
 DEFAULT_VALUES = {
@@ -17,10 +17,10 @@ DEFAULT_VALUES = {
 }
 
 
-class TestMixedbreadAIReranker:
+class TestMixedbreadReranker:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        component = MixedbreadAIReranker()
+        component = MixedbreadReranker()
         assert component.model == DEFAULT_VALUES["model"]
         assert component.top_k == DEFAULT_VALUES["top_k"]
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
@@ -32,11 +32,11 @@ class TestMixedbreadAIReranker:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
         with pytest.raises(ValueError):
-            MixedbreadAIReranker()
+            MixedbreadReranker()
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        component = MixedbreadAIReranker(
+        component = MixedbreadReranker(
             model="custom-model",
             top_k=5,
             meta_fields_to_rank=["meta_field_1", "meta_field_2"],
@@ -48,10 +48,10 @@ class TestMixedbreadAIReranker:
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        component = MixedbreadAIReranker()
+        component = MixedbreadReranker()
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadAIReranker",
+            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
             "init_parameters": {
                 "model": DEFAULT_VALUES["model"],
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
@@ -65,14 +65,14 @@ class TestMixedbreadAIReranker:
 
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        component = MixedbreadAIReranker(
+        component = MixedbreadReranker(
             model="custom-model",
             top_k=2,
             meta_fields_to_rank=["meta_field_1", "meta_field_2"],
         )
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadAIReranker",
+            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
             "init_parameters": {
                 "model": "custom-model",
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
@@ -87,7 +87,7 @@ class TestMixedbreadAIReranker:
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
         data = {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadAIReranker",
+            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
             "init_parameters": {
                 "model": "custom-model",
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
@@ -98,7 +98,7 @@ class TestMixedbreadAIReranker:
                 "max_retries": DEFAULT_VALUES["max_retries"],
             },
         }
-        component = MixedbreadAIReranker.from_dict(data)
+        component = MixedbreadReranker.from_dict(data)
         assert component.model == "custom-model"
         assert component.top_k == 2
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
@@ -107,7 +107,7 @@ class TestMixedbreadAIReranker:
     def test_from_dict_fail_wo_env_var(self, monkeypatch):
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
         data = {
-            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadAIReranker",
+            "type": "mixedbread_ai_haystack.rerankers.reranker.MixedbreadReranker",
             "init_parameters": {
                 "model": "custom-model",
                 "top_k": 2,
@@ -115,11 +115,11 @@ class TestMixedbreadAIReranker:
             },
         }
         with pytest.raises(ValueError):
-            MixedbreadAIReranker.from_dict(data)
+            MixedbreadReranker.from_dict(data)
 
     def test_run_documents_provided(self, monkeypatch, mock_reranking_response):  # noqa: ARG002
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        ranker = MixedbreadAIReranker()
+        ranker = MixedbreadReranker()
         query = "test query"
         documents = [
             Document(id="abcd", content="doc1", meta={"meta_field": "meta_value_1"}),
@@ -136,7 +136,7 @@ class TestMixedbreadAIReranker:
 
     def test_run_topk_set_in_init(self, monkeypatch, mock_reranking_response):  # noqa: ARG002
         monkeypatch.setenv("MXBAI_API_KEY", "test-api-key")
-        ranker = MixedbreadAIReranker(top_k=1)
+        ranker = MixedbreadReranker(top_k=1)
         query = "test query"
         documents = [
             Document(id="abcd", content="doc1"),
@@ -153,10 +153,10 @@ class TestMixedbreadAIReranker:
 
     @pytest.mark.skipif(
         not os.environ.get("MXBAI_API_KEY", None),
-        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
     )
     def test_live_run(self):
-        component = MixedbreadAIReranker()
+        component = MixedbreadReranker()
         documents = [
             Document(id="abcd", content="Paris is in France"),
             Document(id="efgh", content="Berlin is in Germany"),
@@ -175,10 +175,10 @@ class TestMixedbreadAIReranker:
 
     @pytest.mark.skipif(
         not os.environ.get("MXBAI_API_KEY", None),
-        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
     )
     def test_live_run_topk_greater_than_docs(self):
-        component = MixedbreadAIReranker(
+        component = MixedbreadReranker(
             meta_fields_to_rank=["topic"]
         )
         documents = [

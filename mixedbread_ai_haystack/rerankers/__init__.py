@@ -1,1 +1,1 @@
-from .reranker import MixedbreadAIReranker
+from .reranker import MixedbreadReranker

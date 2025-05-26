@@ -1,2 +1,2 @@
-from .embedders import MixedbreadAIDocumentEmbedder, MixedbreadAITextEmbedder
-from .rerankers import MixedbreadAIReranker
+from .embedders import MixedbreadDocumentEmbedder, MixedbreadTextEmbedder
+from .rerankers import MixedbreadReranker

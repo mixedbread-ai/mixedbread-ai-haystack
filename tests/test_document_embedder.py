@@ -3,10 +3,10 @@ from unittest.mock import patch
 import pytest
 from haystack import Document
 from haystack.utils import Secret
-from mixedbread_ai import EncodingFormat, TruncationStrategy, ObjectType
+from typing import Literal
 
-from mixedbread_ai.types import Usage
-from mixedbread_ai_haystack.embedders import MixedbreadAIDocumentEmbedder
+from mixedbread.types.embedding_create_response import Usage
+from mixedbread_ai_haystack.embedders import MixedbreadDocumentEmbedder
 from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
 from .utils import mock_embeddings_response
 
@@ -18,8 +18,8 @@ DEFAULT_VALUES = {
     "prefix": "",
     "suffix": "",
     "normalized": True,
-    "encoding_format": EncodingFormat.FLOAT,
-    "truncation_strategy": TruncationStrategy.START,
+    "encoding_format": "float",
+    "truncation_strategy": "start",
     "dimensions": None,
     "prompt": None,
     "batch_size": 128,
@@ -29,10 +29,10 @@ DEFAULT_VALUES = {
 }
 
 
-class TestMixedbreadAIDocumentEmbedder:
+class TestMixedbreadDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        embedder = MixedbreadAIDocumentEmbedder()
+        embedder = MixedbreadDocumentEmbedder()
 
         assert embedder.api_key == Secret.from_env_var("MXBAI_API_KEY")
         assert embedder.base_url == DEFAULT_VALUES["base_url"]
@@ -54,7 +54,7 @@ class TestMixedbreadAIDocumentEmbedder:
         assert embedder.meta_fields_to_embed == DEFAULT_VALUES["meta_fields_to_embed"]
 
     def test_init_with_parameters(self):
-        embedder = MixedbreadAIDocumentEmbedder(
+        embedder = MixedbreadDocumentEmbedder(
             api_key=Secret.from_token("test-api-key"),
             base_url="http://example.com",
             timeout=50.0,
@@ -63,8 +63,8 @@ class TestMixedbreadAIDocumentEmbedder:
             prefix="prefix",
             suffix="suffix",
             normalized=False,
-            encoding_format=EncodingFormat.BINARY,
-            truncation_strategy=TruncationStrategy.END,
+            encoding_format="binary",
+            truncation_strategy="end",
             dimensions=500,
             prompt="prompt",
 
@@ -83,8 +83,8 @@ class TestMixedbreadAIDocumentEmbedder:
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert not embedder.normalized
-        assert embedder.encoding_format == EncodingFormat.BINARY
-        assert embedder.truncation_strategy == TruncationStrategy.END
+        assert embedder.encoding_format == "binary"
+        assert embedder.truncation_strategy == "end"
         assert embedder.dimensions == 500
         assert embedder.prompt == "prompt"
 
@@ -96,14 +96,14 @@ class TestMixedbreadAIDocumentEmbedder:
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
         with pytest.raises(ValueError):
-            MixedbreadAIDocumentEmbedder()
+            MixedbreadDocumentEmbedder()
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        component = MixedbreadAIDocumentEmbedder()
+        component = MixedbreadDocumentEmbedder()
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAIDocumentEmbedder",
+            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadDocumentEmbedder",
             "init_parameters": {
                 **DEFAULT_VALUES,
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict()
@@ -112,7 +112,7 @@ class TestMixedbreadAIDocumentEmbedder:
 
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        component = MixedbreadAIDocumentEmbedder(
+        component = MixedbreadDocumentEmbedder(
             base_url="http://example.com",
             timeout=50.0,
             max_retries=10,
@@ -120,8 +120,8 @@ class TestMixedbreadAIDocumentEmbedder:
             prefix="prefix",
             suffix="suffix",
             normalized=False,
-            encoding_format=EncodingFormat.BINARY,
-            truncation_strategy=TruncationStrategy.END,
+            encoding_format="binary",
+            truncation_strategy="end",
             dimensions=500,
             prompt="prompt",
 
@@ -132,7 +132,7 @@ class TestMixedbreadAIDocumentEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadAIDocumentEmbedder",
+            "type": "mixedbread_ai_haystack.embedders.document_embedder.MixedbreadDocumentEmbedder",
             "init_parameters": {
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
                 "base_url": "http://example.com",
@@ -142,8 +142,8 @@ class TestMixedbreadAIDocumentEmbedder:
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "normalized": False,
-                "encoding_format": EncodingFormat.BINARY,
-                "truncation_strategy": TruncationStrategy.END,
+                "encoding_format": "binary",
+                "truncation_strategy": "end",
                 "dimensions": 500,
                 "prompt": "prompt",
 
@@ -159,7 +159,7 @@ class TestMixedbreadAIDocumentEmbedder:
             Document(content=f"document number {i}:\ncontent", meta={"meta_field": f"meta_value {i}"}) for i in range(5)
         ]
 
-        embedder = MixedbreadAIDocumentEmbedder(
+        embedder = MixedbreadDocumentEmbedder(
             api_key=Secret.from_token("fake-api-key"), meta_fields_to_embed=["meta_field"], embedding_separator=" | "
         )
 
@@ -176,7 +176,7 @@ class TestMixedbreadAIDocumentEmbedder:
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
-        embedder = MixedbreadAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix")
+        embedder = MixedbreadDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), prefix="my_prefix ", suffix=" my_suffix")
 
         prepared_texts = embedder._documents_to_texts(documents)
 
@@ -192,11 +192,11 @@ class TestMixedbreadAIDocumentEmbedder:
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
-            Document(content="Mixedbread AI is building yummy models", meta={"topic": "AI"})
+            Document(content="Mixedbread is building yummy models", meta={"topic": "AI"})
         ]
 
         model = DEFAULT_VALUES["model"]
-        embedder = MixedbreadAIDocumentEmbedder(
+        embedder = MixedbreadDocumentEmbedder(
             api_key=Secret.from_token("fake-api-key"),
             model=model,
             prefix="prefix ",
@@ -221,15 +221,15 @@ class TestMixedbreadAIDocumentEmbedder:
         assert result["meta"] == EmbedderMeta(
             usage=Usage(prompt_tokens=8, total_tokens=8),
             model=model,
-            object=ObjectType.LIST,
+            object="list",
             normalized=True,
-            encoding_format=EncodingFormat.FLOAT,
+            encoding_format="float",
             dimensions=3
         )
 
     @pytest.mark.skipif(
         not os.environ.get("MXBAI_API_KEY", None),
-        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
     )
     def test_live_run_with_real_documents(self):
         docs = [
@@ -238,7 +238,7 @@ class TestMixedbreadAIDocumentEmbedder:
             Document(content="Baking bread requires yeast", meta={"topic": "Cooking"})
         ]
 
-        embedder = MixedbreadAIDocumentEmbedder(
+        embedder = MixedbreadDocumentEmbedder(
             batch_size=2,
             meta_fields_to_embed=["topic"],
             embedding_separator=" | ",

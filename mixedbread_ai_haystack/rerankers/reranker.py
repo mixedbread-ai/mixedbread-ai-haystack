@@ -1,9 +1,9 @@
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict, Literal
 
 from haystack import Document, component, default_to_dict, logging
-from mixedbread_ai import Usage, ObjectType
+from mixedbread.types.reranking_create_response import Usage
 
-from mixedbread_ai_haystack.common.client import MixedbreadAIClient
+from mixedbread_ai_haystack.common.client import MixedbreadClient
 
 logger = logging.getLogger(__name__)
 
@@ -11,25 +11,25 @@ logger = logging.getLogger(__name__)
 class RerankerMeta(TypedDict, total=False):
     usage: Usage
     model: str
-    object: ObjectType
+    object: Optional[Literal["list", "job", "embedding", "embedding_dict", "text_document", "file", "vector_store", "vector_store.file", "api_key"]]
     top_k: int
 
 
 @component
-class MixedbreadAIReranker(MixedbreadAIClient):
+class MixedbreadReranker(MixedbreadClient):
     """
-    Ranks Documents based on their similarity to the query using Mixedbread AI's reranking API.
+    Ranks Documents based on their similarity to the query using Mixedbread's reranking API.
 
     Documents are indexed from most to least semantically relevant to the query.
 
-    Find out more at https://mixedbread.ai/docs
+    Find out more at https://mixedbread.com/docs
 
     Usage example:
     ```python
     from haystack import Document
-    from mixedbread_ai_haystack import MixedbreadAIReranker
+    from mixedbread_ai_haystack import MixedbreadReranker
 
-    ranker = MixedbreadAIReranker(model="mixedbread-ai/mxbai-rerank-large-v1", top_k=2)
+    ranker = MixedbreadReranker(model="mixedbread-ai/mxbai-rerank-large-v1", top_k=2)
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of Germany?"
@@ -46,15 +46,15 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         **kwargs,
     ):
         """
-        Initializes an instance of the 'MixedbreadAIReranker'.
+        Initializes an instance of the 'MixedbreadReranker'.
 
         Parameters:
-            model (str): Mixedbread AI model name.
+            model (str): Mixedbread model name.
             top_k (int): The maximum number of documents to return.
             meta_fields_to_rank (Optional[List[str]]): List of meta fields that should be concatenated
                 with the document content for reranking.
         """
-        super(MixedbreadAIReranker, self).__init__(**kwargs)
+        super(MixedbreadReranker, self).__init__(**kwargs)
 
         self.model = model
         self.top_k = top_k
@@ -67,7 +67,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         Returns:
             Dict[str, Any]: Dictionary with serialized data.
         """
-        parent_params = super(MixedbreadAIReranker, self).to_dict()["init_parameters"]
+        parent_params = super(MixedbreadReranker, self).to_dict()["init_parameters"]
 
         return default_to_dict(
             self,
@@ -101,7 +101,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         dicts = [doc.to_dict() for doc in documents]
         rank_fields = list({*self.meta_fields_to_rank, "content"})
 
-        response = self._client.reranking(
+        response = self._client.reranking.create(
             model=self.model,
             query=query,
             input=dicts,
@@ -120,7 +120,7 @@ class MixedbreadAIReranker(MixedbreadAIClient):
         return {
             "documents": sorted_docs,
             "meta": RerankerMeta(
-                **response.dict(exclude={"data", "usage", "return_input"}),
+                **response.model_dump(exclude={"data", "usage", "return_input"}),
                 usage=response.usage
             )
         }

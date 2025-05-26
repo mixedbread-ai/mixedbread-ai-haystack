@@ -1,8 +1,11 @@
 from unittest.mock import patch
 
 import pytest
-from mixedbread_ai import Embedding, RerankingResponse, RankedDocument, ObjectType
-from mixedbread_ai.types import EmbeddingsResponse, Usage
+from typing import Literal
+from mixedbread.types import EmbeddingCreateResponse
+from mixedbread.types import RerankingCreateResponse
+from mixedbread.types.embedding_create_response import DataUnionMember0 as Embedding, Usage as EmbeddingUsage
+from mixedbread.types.reranking_create_response import Data as RankedDocument, Usage as RerankingUsage
 
 
 @pytest.fixture
@@ -13,10 +16,10 @@ def mock_embeddings_response():
         normalized = kwargs.get("normalized", None)
         encoding_format = kwargs.get("encoding_format", None)
 
-        mock_response = EmbeddingsResponse(
-            usage=Usage(total_tokens=4, prompt_tokens=4),
+        mock_response = EmbeddingCreateResponse(
+            usage=EmbeddingUsage(total_tokens=4, prompt_tokens=4, completion_tokens=None),
             model=model,
-            object=ObjectType.LIST,
+            object="list",
             normalized=normalized,
             encoding_format=encoding_format,
             dimensions=3,
@@ -24,9 +27,10 @@ def mock_embeddings_response():
         )
         return mock_response
 
-    with patch("mixedbread_ai.client.MixedbreadAI.embeddings",
-               side_effect=mocking) as mock_embeddings_response:
-        yield mock_embeddings_response
+    with patch("mixedbread_ai_haystack.common.client.Mixedbread") as MockClient:
+        mock_instance = MockClient.return_value
+        mock_instance.embeddings.create.side_effect = mocking
+        yield mock_instance.embeddings.create
 
 
 @pytest.fixture
@@ -36,11 +40,11 @@ def mock_reranking_response():
         inputs = kwargs["input"]
         top_k = kwargs["top_k"]
 
-        mock_response = RerankingResponse(
-            usage=Usage(total_tokens=4, prompt_tokens=4),
+        mock_response = RerankingCreateResponse(
+            usage=RerankingUsage(total_tokens=4, prompt_tokens=4, completion_tokens=None),
             model=model,
             data=[
-                RankedDocument(index=i, score=1.0 - 0.1 * i)
+                RankedDocument(index=i, score=1.0 - 0.1 * i, input=None)
                 for i in range(min(top_k, len(inputs)))
             ],
             object=None,
@@ -49,7 +53,8 @@ def mock_reranking_response():
         )
         return mock_response
 
-    with patch("mixedbread_ai.client.MixedbreadAI.reranking",
-               side_effect=mocking) as mock_reranking_response:
-        yield mock_reranking_response
+    with patch("mixedbread_ai_haystack.common.client.Mixedbread") as MockClient:
+        mock_instance = MockClient.return_value
+        mock_instance.reranking.create.side_effect = mocking
+        yield mock_instance.reranking.create
 

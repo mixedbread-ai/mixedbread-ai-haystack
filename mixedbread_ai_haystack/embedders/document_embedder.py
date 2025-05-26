@@ -1,10 +1,11 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import concurrent
 
 from haystack import component, Document, default_to_dict
-from mixedbread_ai import EmbeddingsResponse, ObjectType, Usage
+from mixedbread.types import EmbeddingCreateResponse
+from mixedbread.types.embedding_create_response import Usage
 
-from mixedbread_ai_haystack.embedders import MixedbreadAITextEmbedder
+from mixedbread_ai_haystack.embedders import MixedbreadTextEmbedder
 from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
 
 try:
@@ -16,29 +17,29 @@ except ImportError:
         return iterable
 
 @component
-class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
+class MixedbreadDocumentEmbedder(MixedbreadTextEmbedder):
     """
-    A component for generating document embeddings using Mixedbread AI's embedding API.
+    A component for generating document embeddings using Mixedbread's embedding API.
     The embedding of each Document is stored in the `embedding` field of the Document.
 
-    Find out more at https://mixedbread.ai/docs
+    Find out more at https://mixedbread.com/docs
 
     This implementation uses the embeddings API.
 
-    To use this you'll need a Mixedbread AI API key - either pass it to
+    To use this you'll need a Mixedbread API key - either pass it to
     the api_key parameter or set the MXBAI_API_KEY environment variable.
 
-    API keys are available on https://mixedbread.ai - it's free to sign up and trial API
+    API keys are available on https://mixedbread.com - it's free to sign up and trial API
     keys work with this implementation.
 
     Usage example:
     ```python
     from haystack import Document
-    from mixedbread_ai_haystack import MixedbreadAIDocumentEmbedder
+    from mixedbread_ai_haystack import MixedbreadDocumentEmbedder
 
     doc = Document(content="The quick brown fox jumps over the lazy dog")
 
-    document_embedder = MixedbreadAIDocumentEmbedder()
+    document_embedder = MixedbreadDocumentEmbedder()
 
     result = document_embedder.run([doc])
     print(result['documents'][0].embedding)
@@ -60,7 +61,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
             meta_fields_to_embed: Optional[List[str]] = None,
             **kwargs
     ):
-        super(MixedbreadAIDocumentEmbedder, self).__init__(**kwargs)
+        super(MixedbreadDocumentEmbedder, self).__init__(**kwargs)
 
         if max_concurrency < 1:
             raise ValueError("The max_concurrency parameter must be greater than 0.")
@@ -85,7 +86,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         Returns:
             Dict[str, Any]: The serialized component data.
         """
-        parent_params = super(MixedbreadAIDocumentEmbedder, self).to_dict()["init_parameters"]
+        parent_params = super(MixedbreadDocumentEmbedder, self).to_dict()["init_parameters"]
 
         return default_to_dict(
             self,
@@ -119,41 +120,43 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
 
         return [self.prefix + prepare_doc(doc) + self.suffix for doc in docs]
 
-    def _calculate_embeddings_single_thread(self, texts_to_embed: List[str]) -> List[EmbeddingsResponse]:
+    def _calculate_embeddings_single_thread(self, texts_to_embed: List[str]) -> List[EmbeddingCreateResponse]:
         responses = []
         batch_iter = tqdm(
             range(0, len(texts_to_embed), self.batch_size),
             disable=not self.show_progress_bar,
-            desc="MixedbreadAIDocumentEmbedder - Calculating embedding batches"
+            desc="MixedbreadDocumentEmbedder - Calculating embedding batches"
         )
 
         for i in batch_iter:
             batch = texts_to_embed[i:i + self.batch_size]
-            response = self._client.embeddings(
-                model=self.model,
-                input=batch,
-                normalized=self.normalized,
-                encoding_format=self.encoding_format,
-                truncation_strategy=self.truncation_strategy,
-                dimensions=self.dimensions,
-                prompt=self.prompt,
-                request_options=self._request_options
-            )
+            # Create request parameters
+            params = {
+                "model": self.model,
+                "input": batch,
+                "normalized": self.normalized,
+                "encoding_format": self.encoding_format,
+                "dimensions": self.dimensions,
+                "prompt": self.prompt,
+                "request_options": self._request_options
+            }
+            response = self._client.embeddings.create(**params)
             responses.append(response)
         return responses
 
     def _calculate_embeddings_multi_thread(self, texts_to_embed: List[str]):
         def process_batch(batch):
-            return self._client.embeddings(
-                model=self.model,
-                input=batch,
-                normalized=self.normalized,
-                encoding_format=self.encoding_format,
-                truncation_strategy=self.truncation_strategy,
-                dimensions=self.dimensions,
-                prompt=self.prompt,
-                request_options=self._request_options
-            )
+            # Create request parameters
+            params = {
+                "model": self.model,
+                "input": batch,
+                "normalized": self.normalized,
+                "encoding_format": self.encoding_format,
+                "dimensions": self.dimensions,
+                "prompt": self.prompt,
+                "request_options": self._request_options
+            }
+            return self._client.embeddings.create(**params)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
             futures = [executor.submit(process_batch, texts_to_embed[i:i + self.batch_size]) 
@@ -161,7 +164,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
             futures_iterator = tqdm(
                 concurrent.futures.as_completed(futures),
                 total=len(futures),
-                desc="MixedbreadAIDocumentEmbedder - Calculating embedding batches",
+                desc="MixedbreadDocumentEmbedder - Calculating embedding batches",
                 disable=not self.show_progress_bar
             )
             responses = [future.result() for future in futures_iterator]
@@ -185,8 +188,8 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
-                "MixedbreadAIDocumentEmbedder expects a list of Documents as input."
-                " In case you want to embed a string, please use the MixedbreadAITextEmbedder."
+                "MixedbreadDocumentEmbedder expects a list of Documents as input."
+                " In case you want to embed a string, please use the MixedbreadTextEmbedder."
             )
 
         if len(documents) == 0:
@@ -194,7 +197,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
                 "documents": [],
                 "meta": EmbedderMeta(
                     model=self.model,
-                    object=ObjectType.LIST,
+                    object="list",
                     normalized=self.normalized,
                     encoding_format=self.encoding_format,
                     dimensions=self.dimensions,
@@ -216,7 +219,7 @@ class MixedbreadAIDocumentEmbedder(MixedbreadAITextEmbedder):
         for doc, embedding in zip(documents, embeddings):
             doc.embedding = embedding
 
-        meta = responses[0].dict(exclude={"data", "usage"})
+        meta = responses[0].model_dump(exclude={"data", "usage"})
         meta["usage"] = Usage(
             prompt_tokens=sum(response.usage.prompt_tokens for response in responses),
             total_tokens=sum(response.usage.total_tokens for response in responses),
