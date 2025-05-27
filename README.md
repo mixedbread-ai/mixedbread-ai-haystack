@@ -8,11 +8,12 @@
 
 ## Overview
 
-[Mixedbread AI](https://www.mixedbread.com) provides best-in-class embedding and reranking models, both open-source and proprietary. This integration brings three powerful components to your Haystack pipelines:
+[Mixedbread AI](https://www.mixedbread.com) provides best-in-class embedding and reranking models, both open-source and proprietary. This integration brings four powerful components to your Haystack pipelines:
 
 - **MixedbreadTextEmbedder** - For embedding single texts and queries
 - **MixedbreadDocumentEmbedder** - For embedding documents with metadata support  
 - **MixedbreadReranker** - For reranking documents by relevance
+- **MixedbreadDocumentParser** - For parsing and extracting structured content from various file formats
 
 More information can be found in the [official documentation](https://www.mixedbread.com/api-reference/integrations#haystack).
 
@@ -41,7 +42,7 @@ embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
 
 # Generate embeddings
 result = embedder.run(text="What is the capital of France?")
-embedding = result["embedding"]  # List of floats
+embedding = result["embedding"]
 ```
 
 ## Components
@@ -66,6 +67,13 @@ embedding = result["embedding"]  # List of floats
 - **Features**: Metadata field inclusion, configurable top-k
 - **Use case**: Improving retrieval precision in RAG pipelines
 
+### MixedbreadDocumentParser
+- **Purpose**: Parse and extract structured content from various file formats
+- **Input**: File paths or ByteStream objects (PDF, DOCX, PPTX, images, etc.)
+- **Output**: Haystack Documents with parsed content and rich metadata
+- **Features**: Multiple chunking strategies, element type filtering, async support
+- **Use case**: Document preprocessing and content extraction for RAG pipelines
+
 ## Examples
 
 Complete examples are available in the [`examples/`](./examples/) directory:
@@ -73,6 +81,7 @@ Complete examples are available in the [`examples/`](./examples/) directory:
 - **[Text Embedding](./examples/mixedbread_text_embedding.py)** - Basic text embedding with retrieval
 - **[Document Embedding](./examples/mixedbread_document_embedding.py)** - Document indexing and search  
 - **[Reranking](./examples/mixedbread_reranking.py)** - Document reranking for improved relevance
+- **[Document Parsing](./examples/mixedbread_document_parsing.py)** - File parsing and content extraction
 
 ## Advanced Usage
 
