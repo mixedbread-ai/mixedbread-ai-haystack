@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mixedbread-ai-haystack"
-version = "2.0.2"
+version = "2.1.1"
 description = 'Mixedbread (https://www.mixedbread.com) Haystack integration'
 readme = "README.md"
 license = "Apache-2.0"
