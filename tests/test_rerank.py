@@ -10,7 +10,6 @@ DEFAULT_VALUES = {
     "max_retries": 2,
     "model": "mixedbread-ai/mxbai-rerank-large-v1",
     "top_k": 10,
-    "rank_fields": [],
     "return_input": False,
 }
 
@@ -25,7 +24,6 @@ class TestMixedbreadReranker:
         assert component.model == DEFAULT_VALUES["model"]
         assert component.top_k == DEFAULT_VALUES["top_k"]
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert component.rank_fields == DEFAULT_VALUES["rank_fields"]
         assert component.return_input == DEFAULT_VALUES["return_input"]
         assert component.base_url == DEFAULT_VALUES["base_url"]
         assert component.timeout == DEFAULT_VALUES["timeout"]
@@ -39,7 +37,6 @@ class TestMixedbreadReranker:
         component = MixedbreadReranker(
             model="custom-model",
             top_k=5,
-            rank_fields=["meta_field_1", "meta_field_2"],
             return_input=True,
             base_url="http://custom-url.com",
             timeout=30.0,
@@ -48,7 +45,6 @@ class TestMixedbreadReranker:
         assert component.model == "custom-model"
         assert component.top_k == 5
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert component.rank_fields == ["meta_field_1", "meta_field_2"]
         assert component.return_input is True
         assert component.base_url == "http://custom-url.com"
         assert component.timeout == 30.0
@@ -78,7 +74,6 @@ class TestMixedbreadReranker:
                 "model": DEFAULT_VALUES["model"],
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
                 "top_k": DEFAULT_VALUES["top_k"],
-                "rank_fields": DEFAULT_VALUES["rank_fields"],
                 "return_input": DEFAULT_VALUES["return_input"],
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
@@ -94,7 +89,6 @@ class TestMixedbreadReranker:
         component = MixedbreadReranker(
             model="custom-model",
             top_k=2,
-            rank_fields=["meta_field_1", "meta_field_2"],
             return_input=True,
             base_url="http://custom-url.com",
             timeout=30.0,
@@ -107,7 +101,6 @@ class TestMixedbreadReranker:
                 "model": "custom-model",
                 "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
                 "top_k": 2,
-                "rank_fields": ["meta_field_1", "meta_field_2"],
                 "return_input": True,
                 "base_url": "http://custom-url.com",
                 "timeout": 30.0,

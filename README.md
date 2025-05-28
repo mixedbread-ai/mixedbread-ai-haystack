@@ -63,7 +63,7 @@ Learn more: [Embeddings API Documentation](https://www.mixedbread.com/docs/embed
 - **Purpose**: Rerank documents by relevance to a query
 - **Input**: Query string + List of Documents  
 - **Output**: Reranked documents with relevance scores
-- **Features**: Metadata field inclusion, configurable top-k
+- **Features**: Configurable top-k ranking
 - **Use case**: Improving retrieval precision in RAG pipelines
 
 Learn more: [Reranking API Documentation](https://www.mixedbread.com/docs/reranking/overview) | [API Reference](https://www.mixedbread.com/api-reference/endpoints/reranking)
@@ -103,9 +103,8 @@ embedder = MixedbreadDocumentEmbedder(
     embedding_separator=" | "
 )
 
-reranker = MixedbreadReranker(
-    rank_fields=["title", "summary"]
-)
+# Note: rank_fields feature is not available in the current version
+reranker = MixedbreadReranker(top_k=5)
 ```
 
 ## Testing

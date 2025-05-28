@@ -15,7 +15,6 @@ class MixedbreadReranker(MixedbreadClient):
         api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
         model: str = "mixedbread-ai/mxbai-rerank-large-v1",
         top_k: int = 10,
-        rank_fields: Optional[List[str]] = None,
         return_input: Optional[bool] = False,
         base_url: Optional[str] = None,
         timeout: Optional[float] = 60.0,
@@ -26,7 +25,6 @@ class MixedbreadReranker(MixedbreadClient):
         )
         self.model = model
         self.top_k = top_k
-        self.rank_fields = rank_fields or []
         self.return_input = return_input
 
     def to_dict(self) -> Dict[str, Any]:
@@ -36,7 +34,6 @@ class MixedbreadReranker(MixedbreadClient):
             **client_params,
             model=self.model,
             top_k=self.top_k,
-            rank_fields=self.rank_fields,
             return_input=self.return_input,
         )
 
@@ -44,23 +41,6 @@ class MixedbreadReranker(MixedbreadClient):
     def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadReranker":
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
-
-    def _prepare_documents_for_reranking(self, documents: List[Document]) -> List[str]:
-        """Prepare document texts for reranking."""
-        texts = []
-        for doc in documents:
-            content_parts = []
-
-            if doc.content:
-                content_parts.append(doc.content)
-
-            for field in self.rank_fields:
-                if doc.meta.get(field):
-                    content_parts.append(str(doc.meta[field]))
-
-            texts.append(" ".join(content_parts))
-
-        return texts
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document], query: str) -> Dict[str, Any]:
@@ -79,7 +59,10 @@ class MixedbreadReranker(MixedbreadClient):
                 },
             }
 
-        texts_to_rerank = self._prepare_documents_for_reranking(documents)
+        # Prepare texts for reranking
+        texts_to_rerank = []
+        for doc in documents:
+            texts_to_rerank.append(doc.content or "")
 
         response = self.client.rerank(
             model=self.model,
@@ -121,7 +104,9 @@ class MixedbreadReranker(MixedbreadClient):
                 },
             }
 
-        texts_to_rerank = self._prepare_documents_for_reranking(documents)
+        texts_to_rerank = []
+        for doc in documents:
+            texts_to_rerank.append(doc.content or "")
 
         response = await self.async_client.rerank(
             model=self.model,

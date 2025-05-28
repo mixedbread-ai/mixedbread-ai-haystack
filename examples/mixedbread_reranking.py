@@ -49,7 +49,7 @@ for query in queries:
     for model in models:
         print(f"Using model: {model}")
 
-        reranker = MixedbreadReranker(top_k=3, model=model, rank_fields=["content"])
+        reranker = MixedbreadReranker(top_k=3, model=model)
 
         try:
             result = reranker.run(documents=documents, query=query)
@@ -68,21 +68,20 @@ for query in queries:
 
     print("-" * 70)
 
-# Example 2: Reranking with metadata integration
-print("\nExample 2: Reranking with Metadata Fields")
+# Example 2: Reranking with different top_k values
+print("\nExample 2: Reranking with Different Top-K Values")
 
-reranker_with_meta = MixedbreadReranker(
+reranker_top5 = MixedbreadReranker(
     top_k=5,
     model="mixedbread-ai/mxbai-rerank-large-v2",
-    rank_fields=["content", "category", "region"],
 )
 
 query = "German baking traditions"
 print(f"Query: '{query}'")
-print("Ranking considers: content + category + region metadata\n")
+print("Ranking with top_k=5\n")
 
 try:
-    result = reranker_with_meta.run(documents=documents, query=query)
+    result = reranker_top5.run(documents=documents, query=query)
 
     print("Reranked results:")
     for i, doc in enumerate(result["documents"], 1):
