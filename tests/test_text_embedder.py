@@ -119,32 +119,6 @@ class TestMixedbreadTextEmbedder:
             },
         }
 
-    def test_run_wrong_input_format(self):
-        """
-        Test for checking incorrect input when creating embedding.
-        """
-        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("fake-api-key"))
-
-        list_integers_input = [1, 2, 3]
-
-        with pytest.raises(
-            TypeError, match="MixedbreadTextEmbedder expects a string as input"
-        ):
-            embedder.run(text=list_integers_input)
-
-    def test_run_with_list_input(self):
-        """
-        Test for checking that list input raises appropriate error with helpful message.
-        """
-        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("fake-api-key"))
-
-        list_input = ["text1", "text2"]
-
-        with pytest.raises(
-            TypeError, match="MixedbreadTextEmbedder expects a string as input"
-        ):
-            embedder.run(text=list_input)
-
     @pytest.mark.skipif(
         not TestConfig.has_api_key(),
         reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",

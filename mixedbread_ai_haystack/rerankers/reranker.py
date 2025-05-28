@@ -1,14 +1,7 @@
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 from haystack import Document, component, default_to_dict, default_from_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread_ai_haystack.common.client import MixedbreadClient
-
-
-class RerankerMeta(TypedDict):
-    model: str
-    usage: Dict[str, int]
-    object: Optional[str]
-    top_k: int
 
 
 @component
@@ -56,7 +49,6 @@ class MixedbreadReranker(MixedbreadClient):
         """Prepare document texts for reranking."""
         texts = []
         for doc in documents:
-
             content_parts = []
 
             if doc.content:
@@ -79,12 +71,12 @@ class MixedbreadReranker(MixedbreadClient):
         if not documents:
             return {
                 "documents": [],
-                "meta": RerankerMeta(
-                    model=self.model,
-                    usage={"prompt_tokens": 0, "total_tokens": 0},
-                    top_k=0,
-                    object="list",
-                ),
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                    "object": "list",
+                },
             }
 
         texts_to_rerank = self._prepare_documents_for_reranking(documents)
@@ -103,12 +95,12 @@ class MixedbreadReranker(MixedbreadClient):
             original_doc.meta["rerank_score"] = result.score
             reranked_documents.append(original_doc)
 
-        meta = RerankerMeta(
-            model=response.model,
-            usage=response.usage.model_dump(),
-            top_k=len(reranked_documents),
-            object=response.object,
-        )
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "top_k": len(reranked_documents),
+            "object": response.object,
+        }
 
         return {"documents": reranked_documents, "meta": meta}
 
@@ -121,12 +113,12 @@ class MixedbreadReranker(MixedbreadClient):
         if not documents:
             return {
                 "documents": [],
-                "meta": RerankerMeta(
-                    model=self.model,
-                    usage={"prompt_tokens": 0, "total_tokens": 0},
-                    top_k=0,
-                    object="list",
-                ),
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                    "object": "list",
+                },
             }
 
         texts_to_rerank = self._prepare_documents_for_reranking(documents)
@@ -145,11 +137,11 @@ class MixedbreadReranker(MixedbreadClient):
             original_doc.meta["rerank_score"] = result.score
             reranked_documents.append(original_doc)
 
-        meta = RerankerMeta(
-            model=response.model,
-            usage=response.usage.model_dump(),
-            top_k=len(reranked_documents),
-            object=response.object,
-        )
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "top_k": len(reranked_documents),
+            "object": response.object,
+        }
 
         return {"documents": reranked_documents, "meta": meta}

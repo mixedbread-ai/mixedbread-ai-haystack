@@ -3,10 +3,6 @@ from haystack import component, default_to_dict, default_from_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread_ai_haystack.common.client import MixedbreadClient
 from mixedbread_ai_haystack.embedders.embedding_types import MixedbreadEmbeddingType
-from mixedbread_ai_haystack.embedders.utils import (
-    get_embedding_response,
-    get_async_embedding_response,
-)
 
 
 class TextEmbedderMeta(TypedDict):
@@ -74,34 +70,50 @@ class MixedbreadTextEmbedder(MixedbreadClient):
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
     def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
-        if not isinstance(text, str):
-            raise TypeError("MixedbreadTextEmbedder expects a string as input.")
-
-        embeddings, meta = get_embedding_response(
-            client=self.client,
-            texts=[text],
+        response = self.client.embed(
             model=self.model,
+            input=[text],
             normalized=self.normalized,
-            encoding_format=self.encoding_format,
+            encoding_format=self.encoding_format.value,
             dimensions=self.dimensions,
             prompt=prompt or self.prompt,
         )
-        return {"embedding": embeddings[0] if embeddings else [], "meta": meta}
+
+        embedding = response.data[0].embedding if response.data else []
+
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "normalized": response.normalized,
+            "encoding_format": response.encoding_format,
+            "dimensions": response.dimensions,
+            "object": response.object,
+        }
+
+        return {"embedding": embedding, "meta": meta}
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
     async def run_async(
         self, text: str, prompt: Optional[str] = None
     ) -> Dict[str, Any]:
-        if not isinstance(text, str):
-            raise TypeError("MixedbreadTextEmbedder expects a string as input.")
-
-        embeddings, meta = await get_async_embedding_response(
-            async_client=self.async_client,
-            texts=[text],
+        response = await self.async_client.embed(
             model=self.model,
+            input=[text],
             normalized=self.normalized,
-            encoding_format=self.encoding_format,
+            encoding_format=self.encoding_format.value,
             dimensions=self.dimensions,
             prompt=prompt or self.prompt,
         )
-        return {"embedding": embeddings[0] if embeddings else [], "meta": meta}
+
+        embedding = response.data[0].embedding if response.data else []
+
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "normalized": response.normalized,
+            "encoding_format": response.encoding_format,
+            "dimensions": response.dimensions,
+            "object": response.object,
+        }
+
+        return {"embedding": embedding, "meta": meta}

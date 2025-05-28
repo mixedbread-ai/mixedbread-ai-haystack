@@ -6,10 +6,6 @@ from mixedbread.types.shared import Usage as MixedUsage
 
 from mixedbread_ai_haystack.common.client import MixedbreadClient
 from mixedbread_ai_haystack.embedders.embedding_types import MixedbreadEmbeddingType
-from mixedbread_ai_haystack.embedders.utils import (
-    get_embedding_response,
-    get_async_embedding_response,
-)
 from mixedbread_ai_haystack.embedders.text_embedder import TextEmbedderMeta
 
 
@@ -99,15 +95,25 @@ class MixedbreadDocumentEmbedder(MixedbreadClient):
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
 
-        embeddings, meta = get_embedding_response(
-            client=self.client,
-            texts=texts_to_embed,
+        response = self.client.embed(
             model=self.model,
+            input=texts_to_embed,
             normalized=self.normalized,
-            encoding_format=self.encoding_format,
+            encoding_format=self.encoding_format.value,
             dimensions=self.dimensions,
             prompt=prompt or self.prompt,
         )
+
+        embeddings = [item.embedding for item in response.data] if response.data else []
+
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "normalized": response.normalized,
+            "encoding_format": response.encoding_format,
+            "dimensions": response.dimensions,
+            "object": response.object,
+        }
 
         for doc, embedding in zip(documents, embeddings):
             doc.embedding = embedding
@@ -138,15 +144,25 @@ class MixedbreadDocumentEmbedder(MixedbreadClient):
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
 
-        embeddings, meta = await get_async_embedding_response(
-            async_client=self.async_client,
-            texts=texts_to_embed,
+        response = await self.async_client.embed(
             model=self.model,
+            input=texts_to_embed,
             normalized=self.normalized,
-            encoding_format=self.encoding_format,
+            encoding_format=self.encoding_format.value,
             dimensions=self.dimensions,
             prompt=prompt or self.prompt,
         )
+
+        embeddings = [item.embedding for item in response.data] if response.data else []
+
+        meta = {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "normalized": response.normalized,
+            "encoding_format": response.encoding_format,
+            "dimensions": response.dimensions,
+            "object": response.object,
+        }
 
         for doc, embedding in zip(documents, embeddings):
             doc.embedding = embedding
