@@ -3,7 +3,7 @@ from enum import Enum
 
 class MixedbreadEmbeddingType(Enum):
     """
-    Supported encoding formats for Mixedbread AI embeddings.
+    Supported encoding formats for Mixedbread Embeddings API.
     """
 
     FLOAT = "float"

@@ -8,8 +8,6 @@ DEFAULT_VALUES = {
     "timeout": 60.0,
     "max_retries": 2,
     "model": "mixedbread-ai/mxbai-embed-large-v1",
-    "prefix": "",
-    "suffix": "",
     "normalized": True,
     "encoding_format": "float",
     "dimensions": None,
@@ -31,8 +29,6 @@ class TestMixedbreadTextEmbedder:
         assert embedder.max_retries == DEFAULT_VALUES["max_retries"]
 
         assert embedder.model == DEFAULT_VALUES["model"]
-        assert embedder.prefix == DEFAULT_VALUES["prefix"]
-        assert embedder.suffix == DEFAULT_VALUES["suffix"]
         assert embedder.normalized == DEFAULT_VALUES["normalized"]
         assert embedder.encoding_format.value == DEFAULT_VALUES["encoding_format"]
 
@@ -49,8 +45,6 @@ class TestMixedbreadTextEmbedder:
             timeout=50.0,
             max_retries=10,
             model="model",
-            prefix="prefix",
-            suffix="suffix",
             normalized=False,
             encoding_format="binary",
             dimensions=500,
@@ -63,8 +57,6 @@ class TestMixedbreadTextEmbedder:
         assert embedder.max_retries == 10
 
         assert embedder.model == "model"
-        assert embedder.prefix == "prefix"
-        assert embedder.suffix == "suffix"
         assert not embedder.normalized
         assert embedder.encoding_format.value == "binary"
         assert embedder.dimensions == 500
@@ -75,7 +67,10 @@ class TestMixedbreadTextEmbedder:
         Test that initialization fails when no API key is provided.
         """
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="None of the following authentication environment variables are set"):
+        with pytest.raises(
+            ValueError,
+            match="None of the following authentication environment variables are set",
+        ):
             MixedbreadTextEmbedder()
 
     def test_to_dict(self, monkeypatch):
@@ -87,7 +82,10 @@ class TestMixedbreadTextEmbedder:
         data = component.to_dict()
         assert data == {
             "type": "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadTextEmbedder",
-            "init_parameters": {**DEFAULT_VALUES, "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict()},
+            "init_parameters": {
+                **DEFAULT_VALUES,
+                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
+            },
         }
 
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
@@ -100,8 +98,6 @@ class TestMixedbreadTextEmbedder:
             timeout=50.0,
             max_retries=10,
             model="model",
-            prefix="prefix",
-            suffix="suffix",
             normalized=False,
             encoding_format="binary",
             dimensions=500,
@@ -116,8 +112,6 @@ class TestMixedbreadTextEmbedder:
                 "timeout": 50.0,
                 "max_retries": 10,
                 "model": "model",
-                "prefix": "prefix",
-                "suffix": "suffix",
                 "normalized": False,
                 "encoding_format": "binary",
                 "dimensions": 500,
@@ -133,7 +127,9 @@ class TestMixedbreadTextEmbedder:
 
         list_integers_input = [1, 2, 3]
 
-        with pytest.raises(TypeError, match="MixedbreadTextEmbedder expects a string as input"):
+        with pytest.raises(
+            TypeError, match="MixedbreadTextEmbedder expects a string as input"
+        ):
             embedder.run(text=list_integers_input)
 
     def test_run_with_list_input(self):
@@ -144,7 +140,9 @@ class TestMixedbreadTextEmbedder:
 
         list_input = ["text1", "text2"]
 
-        with pytest.raises(TypeError, match="MixedbreadTextEmbedder expects a string as input"):
+        with pytest.raises(
+            TypeError, match="MixedbreadTextEmbedder expects a string as input"
+        ):
             embedder.run(text=list_input)
 
     @pytest.mark.skipif(

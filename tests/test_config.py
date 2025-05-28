@@ -55,3 +55,22 @@ class TestConfig:
             config["base_url"] = base_url
 
         return config
+
+    @classmethod
+    def get_test_parser_config(cls) -> dict:
+        """Get default configuration for parser tests."""
+        config = {
+            "timeout": cls.TEST_TIMEOUT,
+            "max_retries": cls.TEST_MAX_RETRIES,
+            "chunking_strategy": "page",
+            "return_format": "markdown",
+            "element_types": ["text", "title"],
+            "max_wait_time": 300,
+            "poll_interval": 5,
+        }
+
+        base_url = cls.get_base_url()
+        if base_url:
+            config["base_url"] = base_url
+
+        return config

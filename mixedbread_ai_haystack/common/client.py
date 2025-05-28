@@ -1,12 +1,11 @@
 from typing import Any, Dict, Optional, Union
 
-import httpx
 from haystack import default_from_dict, default_to_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
 from mixedbread import Mixedbread as MixedbreadSDKClient
 from mixedbread import AsyncMixedbread as AsyncMixedbreadSDKClient
 
-USER_AGENT_VERSION = "0.1.0"
+USER_AGENT_VERSION = "2.1.1"
 USER_AGENT = f"mixedbread-ai-haystack/{USER_AGENT_VERSION}"
 
 
@@ -22,8 +21,6 @@ class MixedbreadClient:
         base_url: Optional[str] = None,
         timeout: Optional[float] = 60.0,
         max_retries: Optional[int] = 2,
-        _httpx_client: Optional[httpx.Client] = None,
-        _async_httpx_client: Optional[httpx.AsyncClient] = None,
     ):
         if isinstance(api_key, str):
             api_key = Secret.from_token(api_key)
@@ -44,7 +41,6 @@ class MixedbreadClient:
             base_url=self.base_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            http_client=_httpx_client,
             default_headers={"User-Agent": USER_AGENT},
         )
 
@@ -53,7 +49,6 @@ class MixedbreadClient:
             base_url=self.base_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            http_client=_async_httpx_client,
             default_headers={"User-Agent": USER_AGENT},
         )
 

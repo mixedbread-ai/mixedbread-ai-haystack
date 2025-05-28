@@ -2,20 +2,20 @@
 
 [![PyPI version](https://badge.fury.io/py/mixedbread-ai-haystack.svg)](https://badge.fury.io/py/mixedbread-ai-haystack)
 [![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/)
-[![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/)
 
-**Mixedbread AI** integration for **Haystack 2.x**, providing state-of-the-art embedding and reranking components.
+**Mixedbread AI** integration for **Haystack 2.2.1**, providing state-of-the-art embedding, reranking and parsing.
 
 ## Overview
 
-[Mixedbread AI](https://www.mixedbread.com) provides best-in-class embedding and reranking models, both open-source and proprietary. This integration brings four powerful components to your Haystack pipelines:
+[Mixedbread](https://www.mixedbread.com) provides best-in-class embedding and reranking models, both open-source and proprietary. This integration brings four powerful components to your Haystack pipelines:
 
 - **MixedbreadTextEmbedder** - For embedding single texts and queries
 - **MixedbreadDocumentEmbedder** - For embedding documents with metadata support  
 - **MixedbreadReranker** - For reranking documents by relevance
 - **MixedbreadDocumentParser** - For parsing and extracting structured content from various file formats
 
-More information can be found in the [official documentation](https://www.mixedbread.com/api-reference/integrations#haystack).
+More information can be found in the [official documentation](https://www.mixedbread.com/docs).
+
 
 ## Installation
 
@@ -26,21 +26,16 @@ pip install mixedbread-ai-haystack
 ## Quick Start
 
 ### 1. Get your API key
-Sign up at [mixedbread.com](https://www.mixedbread.com) and get your API key from the [dashboard](https://www.mixedbread.com/dashboard?next=api-keys).
+Sign up at [mixedbread.com](https://www.mixedbread.com) and get your API key from the [dashboard](https://www.platform.mixedbread.com/).
 
-### 2. Set your API key
-```bash
-export MXBAI_API_KEY="your-api-key-here"
-```
+### 2. Store your API key in an environment variable
 
 ### 3. Basic usage
 ```python
 from mixedbread_ai_haystack import MixedbreadTextEmbedder
 
-# Initialize the embedder
 embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
 
-# Generate embeddings
 result = embedder.run(text="What is the capital of France?")
 embedding = result["embedding"]
 ```
@@ -53,12 +48,16 @@ embedding = result["embedding"]
 - **Output**: List of float embeddings
 - **Use case**: Query encoding in retrieval pipelines
 
+Learn more: [Embeddings API Documentation](https://www.mixedbread.com/docs/embeddings/overview) | [API Reference](https://www.mixedbread.com/api-reference/endpoints/embeddings)
+
 ### MixedbreadDocumentEmbedder  
 - **Purpose**: Embed multiple documents with batch processing
 - **Input**: List of Haystack Documents
 - **Output**: Documents with embeddings attached
 - **Features**: Metadata field embedding, progress bars, customizable separators
 - **Use case**: Document indexing in retrieval pipelines
+
+Learn more: [Embeddings API Documentation](https://www.mixedbread.com/docs/embeddings/overview) | [API Reference](https://www.mixedbread.com/api-reference/endpoints/embeddings)
 
 ### MixedbreadReranker
 - **Purpose**: Rerank documents by relevance to a query
@@ -67,12 +66,16 @@ embedding = result["embedding"]
 - **Features**: Metadata field inclusion, configurable top-k
 - **Use case**: Improving retrieval precision in RAG pipelines
 
+Learn more: [Reranking API Documentation](https://www.mixedbread.com/docs/reranking/overview) | [API Reference](https://www.mixedbread.com/api-reference/endpoints/reranking)
+
 ### MixedbreadDocumentParser
 - **Purpose**: Parse and extract structured content from various file formats
 - **Input**: File paths or ByteStream objects (PDF, DOCX, PPTX, images, etc.)
 - **Output**: Haystack Documents with parsed content and rich metadata
 - **Features**: Multiple chunking strategies, element type filtering, async support
 - **Use case**: Document preprocessing and content extraction for RAG pipelines
+
+Learn more: [Parsing API Documentation](https://www.mixedbread.com/docs/parsing/overview) | [API Reference](https://www.mixedbread.com/api-reference/endpoints/parsing)
 
 ## Examples
 
@@ -89,14 +92,6 @@ Complete examples are available in the [`examples/`](./examples/) directory:
 ```python
 embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-2d-large-v1")
 reranker = MixedbreadReranker(model="mixedbread-ai/mxbai-rerank-xsmall-v1")
-```
-
-### Custom Base URL
-```python
-embedder = MixedbreadTextEmbedder(
-    base_url="https://your-custom-endpoint.com",
-    api_key="your-api-key"
-)
 ```
 
 ### Metadata Integration

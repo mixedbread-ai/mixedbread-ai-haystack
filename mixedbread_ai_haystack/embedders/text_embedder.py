@@ -1,12 +1,12 @@
-from typing import Any, Dict, List, Optional, TypedDict, Literal, Union
-
+from typing import Any, Dict, List, Optional, TypedDict, Union
 from haystack import component, default_to_dict, default_from_dict
 from haystack.utils import Secret, deserialize_secrets_inplace
-from mixedbread.types.shared import Usage as MixedUsage
-
 from mixedbread_ai_haystack.common.client import MixedbreadClient
 from mixedbread_ai_haystack.embedders.embedding_types import MixedbreadEmbeddingType
-from mixedbread_ai_haystack.embedders.utils import get_embedding_response, get_async_embedding_response
+from mixedbread_ai_haystack.embedders.utils import (
+    get_embedding_response,
+    get_async_embedding_response,
+)
 
 
 class TextEmbedderMeta(TypedDict):
@@ -21,17 +21,17 @@ class TextEmbedderMeta(TypedDict):
 @component
 class MixedbreadTextEmbedder(MixedbreadClient):
     """
-    Embeds single strings using Mixedbread AI.
+    Embed a single string using the Mixedbread Embeddings API.
     """
 
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
         model: str = "mixedbread-ai/mxbai-embed-large-v1",
-        prefix: str = "",
-        suffix: str = "",
         normalized: bool = True,
-        encoding_format: Union[str, MixedbreadEmbeddingType] = MixedbreadEmbeddingType.FLOAT,
+        encoding_format: Union[
+            str, MixedbreadEmbeddingType
+        ] = MixedbreadEmbeddingType.FLOAT,
         dimensions: Optional[int] = None,
         prompt: Optional[str] = None,
         base_url: Optional[str] = None,
@@ -42,8 +42,6 @@ class MixedbreadTextEmbedder(MixedbreadClient):
             api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries
         )
         self.model = model
-        self.prefix = prefix
-        self.suffix = suffix
         self.normalized = normalized
         if isinstance(encoding_format, str):
             self.encoding_format = MixedbreadEmbeddingType.from_str(encoding_format)
@@ -58,8 +56,6 @@ class MixedbreadTextEmbedder(MixedbreadClient):
             self,
             **client_params,
             model=self.model,
-            prefix=self.prefix,
-            suffix=self.suffix,
             normalized=self.normalized,
             encoding_format=self.encoding_format.value,
             dimensions=self.dimensions,
@@ -71,7 +67,9 @@ class MixedbreadTextEmbedder(MixedbreadClient):
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         ef_val = data["init_parameters"].get("encoding_format")
         if isinstance(ef_val, str):
-            data["init_parameters"]["encoding_format"] = MixedbreadEmbeddingType.from_str(ef_val)
+            data["init_parameters"]["encoding_format"] = (
+                MixedbreadEmbeddingType.from_str(ef_val)
+            )
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
@@ -79,10 +77,9 @@ class MixedbreadTextEmbedder(MixedbreadClient):
         if not isinstance(text, str):
             raise TypeError("MixedbreadTextEmbedder expects a string as input.")
 
-        text_to_embed = f"{self.prefix}{text}{self.suffix}"
         embeddings, meta = get_embedding_response(
             client=self.client,
-            texts=[text_to_embed],
+            texts=[text],
             model=self.model,
             normalized=self.normalized,
             encoding_format=self.encoding_format,
@@ -92,14 +89,15 @@ class MixedbreadTextEmbedder(MixedbreadClient):
         return {"embedding": embeddings[0] if embeddings else [], "meta": meta}
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
-    async def run_async(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+    async def run_async(
+        self, text: str, prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         if not isinstance(text, str):
             raise TypeError("MixedbreadTextEmbedder expects a string as input.")
 
-        text_to_embed = f"{self.prefix}{text}{self.suffix}"
         embeddings, meta = await get_async_embedding_response(
             async_client=self.async_client,
-            texts=[text_to_embed],
+            texts=[text],
             model=self.model,
             normalized=self.normalized,
             encoding_format=self.encoding_format,

@@ -12,7 +12,6 @@ DEFAULT_VALUES = {
     "top_k": 10,
     "rank_fields": [],
     "return_input": False,
-    "rewrite_query": False,
 }
 
 
@@ -28,7 +27,6 @@ class TestMixedbreadReranker:
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
         assert component.rank_fields == DEFAULT_VALUES["rank_fields"]
         assert component.return_input == DEFAULT_VALUES["return_input"]
-        assert component.rewrite_query == DEFAULT_VALUES["rewrite_query"]
         assert component.base_url == DEFAULT_VALUES["base_url"]
         assert component.timeout == DEFAULT_VALUES["timeout"]
         assert component.max_retries == DEFAULT_VALUES["max_retries"]
@@ -43,7 +41,6 @@ class TestMixedbreadReranker:
             top_k=5,
             rank_fields=["meta_field_1", "meta_field_2"],
             return_input=True,
-            rewrite_query=True,
             base_url="http://custom-url.com",
             timeout=30.0,
             max_retries=5,
@@ -53,7 +50,6 @@ class TestMixedbreadReranker:
         assert component.api_key == Secret.from_env_var("MXBAI_API_KEY")
         assert component.rank_fields == ["meta_field_1", "meta_field_2"]
         assert component.return_input is True
-        assert component.rewrite_query is True
         assert component.base_url == "http://custom-url.com"
         assert component.timeout == 30.0
         assert component.max_retries == 5
@@ -63,7 +59,10 @@ class TestMixedbreadReranker:
         Test that initialization fails when no API key is provided.
         """
         monkeypatch.delenv("MXBAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="None of the following authentication environment variables are set"):
+        with pytest.raises(
+            ValueError,
+            match="None of the following authentication environment variables are set",
+        ):
             MixedbreadReranker()
 
     def test_to_dict_default(self, monkeypatch):
@@ -81,7 +80,6 @@ class TestMixedbreadReranker:
                 "top_k": DEFAULT_VALUES["top_k"],
                 "rank_fields": DEFAULT_VALUES["rank_fields"],
                 "return_input": DEFAULT_VALUES["return_input"],
-                "rewrite_query": DEFAULT_VALUES["rewrite_query"],
                 "base_url": DEFAULT_VALUES["base_url"],
                 "timeout": DEFAULT_VALUES["timeout"],
                 "max_retries": DEFAULT_VALUES["max_retries"],
@@ -98,7 +96,6 @@ class TestMixedbreadReranker:
             top_k=2,
             rank_fields=["meta_field_1", "meta_field_2"],
             return_input=True,
-            rewrite_query=True,
             base_url="http://custom-url.com",
             timeout=30.0,
             max_retries=5,
@@ -112,7 +109,6 @@ class TestMixedbreadReranker:
                 "top_k": 2,
                 "rank_fields": ["meta_field_1", "meta_field_2"],
                 "return_input": True,
-                "rewrite_query": True,
                 "base_url": "http://custom-url.com",
                 "timeout": 30.0,
                 "max_retries": 5,
@@ -125,7 +121,9 @@ class TestMixedbreadReranker:
         """
         ranker = MixedbreadReranker(api_key=Secret.from_token("fake-api-key"))
 
-        with pytest.raises(TypeError, match="Input must be a list of Haystack Documents"):
+        with pytest.raises(
+            TypeError, match="Input must be a list of Haystack Documents"
+        ):
             ranker.run(documents="not a list", query="test query")
 
     def test_run_empty_documents(self):
@@ -157,11 +155,16 @@ class TestMixedbreadReranker:
             Document(id="doc3", content="Madrid is the capital of Spain"),
         ]
 
-        result = reranker.run(documents=documents, query="What is the capital of Germany?")
+        result = reranker.run(
+            documents=documents, query="What is the capital of Germany?"
+        )
 
         assert isinstance(result, dict)
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) <= 2  # top_k = 2
         assert all(isinstance(doc, Document) for doc in result["documents"])
-        assert all(hasattr(doc, "meta") and "rerank_score" in doc.meta for doc in result["documents"])
+        assert all(
+            hasattr(doc, "meta") and "rerank_score" in doc.meta
+            for doc in result["documents"]
+        )
         assert "meta" in result

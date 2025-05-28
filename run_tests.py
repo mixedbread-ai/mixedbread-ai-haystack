@@ -1,28 +1,23 @@
-#!/usr/bin/env python3
-"""
-Test runner script for Mixedbread AI Haystack integration.
-"""
 import os
 import sys
 import subprocess
-from pathlib import Path
 
 
 def check_api_key():
     """Check if API key is available."""
     api_key = os.environ.get("MXBAI_API_KEY")
     if not api_key:
-        print("❌ MXBAI_API_KEY environment variable is not set!")
+        print("MXBAI_API_KEY environment variable is not set!")
         print("Please set your API key:")
         print("export MXBAI_API_KEY='your-api-key-here'")
         return False
-    print(f"✅ API key found: {api_key[:10]}...")
+    print(f"API key found: {api_key[:10]}...")
     return True
 
 
 def run_unit_tests():
     """Run unit tests only (no API calls)."""
-    print("🧪 Running unit tests...")
+    print("Running unit tests...")
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
     cmd = ["uv", "run", "pytest", "-m", "not integration", "tests/"]
@@ -31,7 +26,7 @@ def run_unit_tests():
 
 def run_integration_tests():
     """Run integration tests (requires API key)."""
-    print("🌐 Running integration tests...")
+    print("Running integration tests...")
     if not check_api_key():
         return 1
 
@@ -43,7 +38,7 @@ def run_integration_tests():
 
 def run_specific_test(test_name):
     """Run a specific test."""
-    print(f"🎯 Running specific test: {test_name}")
+    print(f"Running specific test: {test_name}")
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
     cmd = ["uv", "run", "pytest", "-k", test_name, "tests/", "-v"]
@@ -52,9 +47,9 @@ def run_specific_test(test_name):
 
 def run_all_tests():
     """Run all tests."""
-    print("🔍 Running all tests...")
+    print("Running all tests...")
     if not check_api_key():
-        print("⚠️  API key not found. Integration tests will be skipped.")
+        print("API key not found. Integration tests will be skipped.")
 
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
@@ -88,7 +83,6 @@ def main():
     elif command == "all":
         return run_all_tests()
     else:
-        # Assume it's a specific test name
         return run_specific_test(command)
 
 

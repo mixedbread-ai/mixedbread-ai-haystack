@@ -14,7 +14,7 @@ class RerankerMeta(TypedDict):
 @component
 class MixedbreadReranker(MixedbreadClient):
     """
-    Reranks Documents using Mixedbread AI.
+    Rerank documents using the Mixedbread Reranking API.
     """
 
     def __init__(
@@ -24,7 +24,6 @@ class MixedbreadReranker(MixedbreadClient):
         top_k: int = 10,
         rank_fields: Optional[List[str]] = None,
         return_input: Optional[bool] = False,
-        rewrite_query: Optional[bool] = False,
         base_url: Optional[str] = None,
         timeout: Optional[float] = 60.0,
         max_retries: Optional[int] = 2,
@@ -36,7 +35,6 @@ class MixedbreadReranker(MixedbreadClient):
         self.top_k = top_k
         self.rank_fields = rank_fields or []
         self.return_input = return_input
-        self.rewrite_query = rewrite_query
 
     def to_dict(self) -> Dict[str, Any]:
         client_params = MixedbreadClient.to_dict(self)["init_parameters"]
@@ -47,7 +45,6 @@ class MixedbreadReranker(MixedbreadClient):
             top_k=self.top_k,
             rank_fields=self.rank_fields,
             return_input=self.return_input,
-            rewrite_query=self.rewrite_query,
         )
 
     @classmethod
@@ -65,7 +62,6 @@ class MixedbreadReranker(MixedbreadClient):
             if doc.content:
                 content_parts.append(doc.content)
 
-            # Add specified meta fields to the text
             for field in self.rank_fields:
                 if doc.meta.get(field):
                     content_parts.append(str(doc.meta[field]))
@@ -76,13 +72,18 @@ class MixedbreadReranker(MixedbreadClient):
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document], query: str) -> Dict[str, Any]:
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
             raise TypeError("Input must be a list of Haystack Documents.")
         if not documents:
             return {
                 "documents": [],
                 "meta": RerankerMeta(
-                    model=self.model, usage={"prompt_tokens": 0, "total_tokens": 0}, top_k=0, object="list"
+                    model=self.model,
+                    usage={"prompt_tokens": 0, "total_tokens": 0},
+                    top_k=0,
+                    object="list",
                 ),
             }
 
@@ -94,18 +95,14 @@ class MixedbreadReranker(MixedbreadClient):
             input=texts_to_rerank,
             top_k=self.top_k,
             return_input=self.return_input,
-            rewrite_query=self.rewrite_query,
         )
 
-        # Create reranked documents based on the results
         reranked_documents = []
         for result in response.data:
             original_doc = documents[result.index]
-            # Add the relevance score to the document metadata
             original_doc.meta["rerank_score"] = result.score
             reranked_documents.append(original_doc)
 
-        # Prepare metadata
         meta = RerankerMeta(
             model=response.model,
             usage=response.usage.model_dump(),
@@ -117,38 +114,37 @@ class MixedbreadReranker(MixedbreadClient):
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     async def run_async(self, documents: List[Document], query: str) -> Dict[str, Any]:
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
             raise TypeError("Input must be a list of Haystack Documents.")
         if not documents:
             return {
                 "documents": [],
                 "meta": RerankerMeta(
-                    model=self.model, usage={"prompt_tokens": 0, "total_tokens": 0}, top_k=0, object="list"
+                    model=self.model,
+                    usage={"prompt_tokens": 0, "total_tokens": 0},
+                    top_k=0,
+                    object="list",
                 ),
             }
 
-        # Prepare texts for reranking
         texts_to_rerank = self._prepare_documents_for_reranking(documents)
 
-        # Call the Mixedbread rerank API asynchronously
         response = await self.async_client.rerank(
             model=self.model,
             query=query,
             input=texts_to_rerank,
             top_k=self.top_k,
             return_input=self.return_input,
-            rewrite_query=self.rewrite_query,
         )
 
-        # Create reranked documents based on the results
         reranked_documents = []
         for result in response.data:
             original_doc = documents[result.index]
-            # Add the relevance score to the document metadata
             original_doc.meta["rerank_score"] = result.score
             reranked_documents.append(original_doc)
 
-        # Prepare metadata
         meta = RerankerMeta(
             model=response.model,
             usage=response.usage.model_dump(),

@@ -483,7 +483,7 @@ wheels = [
 
 [[package]]
 name = "mixedbread-ai-haystack"
-version = "0.1.0"
+version = "2.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "haystack-ai" },
@@ -493,7 +493,6 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "pytest" },
-    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -501,7 +500,6 @@ requires-dist = [
     { name = "haystack-ai", specifier = ">=2.0.0" },
     { name = "mixedbread-ai", specifier = ">=0.3.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
-    { name = "tqdm", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]
 
