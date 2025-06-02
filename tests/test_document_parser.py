@@ -354,7 +354,7 @@ class TestMixedbreadDocumentParser:
         import os
         from pathlib import Path
 
-        test_file_path = Path(__file__).parent.parent / "data" / "report.pdf"
+        test_file_path = Path(__file__).parent.parent / "data" / "acme_invoice.pdf"
 
         if not test_file_path.exists():
             pytest.skip(f"Test file not found: {test_file_path}")

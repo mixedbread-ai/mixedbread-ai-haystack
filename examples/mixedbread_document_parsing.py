@@ -4,12 +4,11 @@ parser = MixedbreadDocumentParser(
     element_types=["text", "title", "list-item", "table"],
 )
 
-print("=== Document Parsing Examples ===\n")
+print("=== Document Parsing Example ===\n")
+print("Replace path with your own file path")
 
-print("Example 1: File Path Parsing")
-print("Note: Replace 'path/to/your/document.pdf' with an actual file path")
 try:
-    result = parser.run(sources=["path/to/your/document.pdf"])
+    result = parser.run(sources=["data/acme_invoice.pdf"])
     documents = result["documents"]
     print(f"Parsed {len(documents)} chunks from the document")
     print(f"First chunk: {documents[0].content[:200]}...")
