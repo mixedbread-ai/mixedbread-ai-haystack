@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from unittest.mock import Mock, patch, mock_open, PropertyMock
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret
@@ -388,3 +389,187 @@ class TestMixedbreadDocumentParser:
 
         has_content = any(len(doc.content.strip()) > 0 for doc in documents)
         assert has_content, "No documents contain actual content"
+
+    # Async Tests
+    
+    @pytest.mark.asyncio
+    async def test_run_async_empty_sources(self):
+        """
+        Test async run method with empty sources list.
+        """
+        parser = MixedbreadDocumentParser(api_key=Secret.from_token("fake-api-key"))
+        result = await parser.run_async(sources=[])
+
+        assert result["documents"] == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_meta_length(self):
+        """
+        Test async run method with mismatched meta list length.
+        """
+        parser = MixedbreadDocumentParser(api_key=Secret.from_token("fake-api-key"))
+        
+        with pytest.raises(ValueError, match="Length of meta list"):
+            await parser.run_async(
+                sources=["file1.pdf", "file2.pdf"],
+                meta=[{"key": "value"}]  # Only one meta for two sources
+            )
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_meta_type(self):
+        """
+        Test async run method with invalid meta type.
+        """
+        parser = MixedbreadDocumentParser(api_key=Secret.from_token("fake-api-key"))
+        
+        with pytest.raises(ValueError, match="Length of meta list"):
+            await parser.run_async(
+                sources=["file1.pdf"],
+                meta="invalid_meta_type"  # Should be dict or list
+            )
+
+    @pytest.mark.asyncio
+    async def test_run_async_error_handling(self):
+        """
+        Test async run method creates error documents for failed parsing.
+        """
+        parser = MixedbreadDocumentParser(api_key=Secret.from_token("fake-api-key"))
+        
+        # Mock the async method to raise an exception
+        with patch.object(parser, '_process_file_async', side_effect=Exception("Test error")):
+            result = await parser.run_async(sources=["test.pdf"])
+            
+            assert len(result["documents"]) == 1
+            doc = result["documents"][0]
+            assert isinstance(doc, Document)
+            assert doc.content == ""  # Error documents have empty content
+            assert doc.meta.get("parsing_status") == "failed"
+            assert "parsing_error" in doc.meta
+            assert "Failed to process" in doc.meta["parsing_error"]
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_basic_parsing(self):
+        """
+        Test basic async document parsing with real API call.
+        """
+        from pathlib import Path
+        
+        test_file_path = Path(__file__).parent.parent / "data" / "acme_invoice.pdf"
+        if not test_file_path.exists():
+            pytest.skip(f"Test file not found: {test_file_path}")
+
+        parser_config = TestConfig.get_test_parser_config()
+        parser = MixedbreadDocumentParser(**parser_config)
+
+        result = await parser.run_async(sources=[str(test_file_path)])
+        documents = result["documents"]
+
+        assert isinstance(documents, list)
+        assert len(documents) > 0
+
+        for doc in documents:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.content, str)
+            assert len(doc.content) > 0
+
+            assert "file_path" in doc.meta
+            assert "parsing_job_id" in doc.meta
+            assert "chunking_strategy" in doc.meta
+            assert "return_format" in doc.meta
+            assert "element_types" in doc.meta
+            assert "chunk_index" in doc.meta
+            assert isinstance(doc.meta["chunk_index"], int)
+
+            assert doc.meta.get("parsing_status") != "failed"
+            assert "parsing_error" not in doc.meta
+
+        has_content = any(len(doc.content.strip()) > 0 for doc in documents)
+        assert has_content, "No documents contain actual content"
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_concurrent_parsing(self):
+        """
+        Test concurrent async document parsing for performance.
+        """
+        from pathlib import Path
+        
+        test_file_path = Path(__file__).parent.parent / "data" / "acme_invoice.pdf"
+        if not test_file_path.exists():
+            pytest.skip(f"Test file not found: {test_file_path}")
+
+        parser_config = TestConfig.get_test_parser_config()
+        parser = MixedbreadDocumentParser(**parser_config)
+
+        # Create multiple parsing tasks (same file for testing)
+        sources_list = [
+            [str(test_file_path)],
+            [str(test_file_path)],
+        ]
+
+        # Process multiple files concurrently
+        tasks = [
+            parser.run_async(sources=sources) 
+            for sources in sources_list
+        ]
+        results = await asyncio.gather(*tasks)
+
+        assert len(results) == 2
+        for result in results:
+            documents = result["documents"]
+            assert len(documents) > 0
+            assert all(isinstance(doc, Document) for doc in documents)
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_with_custom_meta(self):
+        """
+        Test async document parsing with custom metadata.
+        """
+        from pathlib import Path
+        
+        test_file_path = Path(__file__).parent.parent / "data" / "acme_invoice.pdf"
+        if not test_file_path.exists():
+            pytest.skip(f"Test file not found: {test_file_path}")
+
+        parser_config = TestConfig.get_test_parser_config()
+        parser = MixedbreadDocumentParser(**parser_config)
+
+        custom_meta = {"source": "test", "priority": "high"}
+        result = await parser.run_async(
+            sources=[str(test_file_path)],
+            meta=custom_meta
+        )
+        
+        documents = result["documents"]
+        assert len(documents) > 0
+        
+        for doc in documents:
+            assert doc.meta["source"] == "test"
+            assert doc.meta["priority"] == "high"
+
+    @pytest.mark.asyncio
+    async def test_run_async_behavior_matches_sync(self):
+        """
+        Test that async method behavior matches sync method for edge cases.
+        """
+        parser = MixedbreadDocumentParser(api_key=Secret.from_token("fake-api-key"))
+        
+        # Test with empty sources
+        sync_result = parser.run(sources=[])
+        async_result = await parser.run_async(sources=[])
+        
+        assert sync_result["documents"] == async_result["documents"]

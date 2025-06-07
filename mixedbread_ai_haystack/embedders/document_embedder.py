@@ -107,6 +107,73 @@ class MixedbreadDocumentEmbedder(SerializationMixin, MixedbreadClient):
             texts.append(content_to_embed)
         return texts
 
+    def _run_impl(self, documents: List[Document], prompt: Optional[str] = None, use_async: bool = False):
+        """
+        Internal implementation for both sync and async document embedding.
+        
+        Args:
+            documents: List of Haystack documents to embed.
+            prompt: Optional prompt to override the default.
+            use_async: Whether to use async client.
+            
+        Returns:
+            Dictionary containing documents with embeddings and metadata, or awaitable if async.
+            
+        Raises:
+            Exception: If the embedding request fails.
+        """
+        validate_documents(documents)
+        
+        if not documents:
+            logger.info("Empty document list provided")
+            result = create_empty_documents_response(self.model)
+            if use_async:
+                async def _return_empty():
+                    return result
+                return _return_empty()
+            return result
+
+        try:
+            texts_to_embed = self._prepare_texts_to_embed(documents)
+            client = self.async_client if use_async else self.client
+            
+            embed_call = client.embed(
+                model=self.model,
+                input=texts_to_embed,
+                normalized=self.normalized,
+                encoding_format=self.encoding_format.value,
+                dimensions=self.dimensions,
+                prompt=prompt or self.prompt,
+            )
+            
+            if use_async:
+                # Return the awaitable coroutine for async processing
+                async def _process_async_response():
+                    response = await embed_call
+                    embeddings = [item.embedding for item in response.data] if response.data else []
+                    meta = create_response_meta(response, include_embedder_fields=True)
+                    
+                    for doc, embedding in zip(documents, embeddings):
+                        doc.embedding = embedding
+                    
+                    return {"documents": documents, "meta": meta}
+                return _process_async_response()
+            else:
+                # Process sync response immediately
+                response = embed_call
+                embeddings = [item.embedding for item in response.data] if response.data else []
+                meta = create_response_meta(response, include_embedder_fields=True)
+                
+                for doc, embedding in zip(documents, embeddings):
+                    doc.embedding = embedding
+                
+                return {"documents": documents, "meta": meta}
+            
+        except Exception as e:
+            error_msg = f"Error during {'async ' if use_async else ''}document embedding: {str(e)}"
+            logger.error(error_msg)
+            raise
+
     @component.output_types(documents=List[Document], meta=TextEmbedderMeta)
     def run(
         self, documents: List[Document], prompt: Optional[str] = None
@@ -124,35 +191,7 @@ class MixedbreadDocumentEmbedder(SerializationMixin, MixedbreadClient):
         Raises:
             Exception: If the embedding request fails.
         """
-        validate_documents(documents)
-        
-        if not documents:
-            logger.info("Empty document list provided")
-            return create_empty_documents_response(self.model)
-
-        try:
-            texts_to_embed = self._prepare_texts_to_embed(documents)
-
-            response = self.client.embed(
-                model=self.model,
-                input=texts_to_embed,
-                normalized=self.normalized,
-                encoding_format=self.encoding_format.value,
-                dimensions=self.dimensions,
-                prompt=prompt or self.prompt,
-            )
-
-            embeddings = [item.embedding for item in response.data] if response.data else []
-            meta = create_response_meta(response, include_embedder_fields=True)
-
-            for doc, embedding in zip(documents, embeddings):
-                doc.embedding = embedding
-
-            return {"documents": documents, "meta": meta}
-            
-        except Exception as e:
-            logger.error(f"Error during document embedding: {str(e)}")
-            raise
+        return self._run_impl(documents, prompt, use_async=False)
 
     @component.output_types(documents=List[Document], meta=TextEmbedderMeta)
     async def run_async(
@@ -171,32 +210,4 @@ class MixedbreadDocumentEmbedder(SerializationMixin, MixedbreadClient):
         Raises:
             Exception: If the embedding request fails.
         """
-        validate_documents(documents)
-        
-        if not documents:
-            logger.info("Empty document list provided")
-            return create_empty_documents_response(self.model)
-
-        try:
-            texts_to_embed = self._prepare_texts_to_embed(documents)
-
-            response = await self.async_client.embed(
-                model=self.model,
-                input=texts_to_embed,
-                normalized=self.normalized,
-                encoding_format=self.encoding_format.value,
-                dimensions=self.dimensions,
-                prompt=prompt or self.prompt,
-            )
-
-            embeddings = [item.embedding for item in response.data] if response.data else []
-            meta = create_response_meta(response, include_embedder_fields=True)
-
-            for doc, embedding in zip(documents, embeddings):
-                doc.embedding = embedding
-
-            return {"documents": documents, "meta": meta}
-            
-        except Exception as e:
-            logger.error(f"Error during async document embedding: {str(e)}")
-            raise
+        return await self._run_impl(documents, prompt, use_async=True)

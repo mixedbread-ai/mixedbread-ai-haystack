@@ -174,14 +174,15 @@ def main():
             print(f"✗ Error with model {model}: {e}")
             print()
     
-    # Example 6: Async processing
+    # Example 6: Async Processing
     print("6. Async Processing")
     print("-" * 50)
     
     try:
         import asyncio
         
-        async def embed_async():
+        async def single_embed_async():
+            """Single async embedding using run_async method."""
             embedder = MixedbreadTextEmbedder(
                 model="mixedbread-ai/mxbai-embed-large-v1"
             )
@@ -191,12 +192,64 @@ def main():
             end_time = time.time()
             
             embedding = result["embedding"]
-            print(f"✓ Async embedding completed:")
+            print(f"✓ Single async embedding completed:")
             print(f"  Dimensions: {len(embedding)}")
             print(f"  Processing time: {(end_time - start_time)*1000:.1f}ms")
+            return end_time - start_time
+        
+        async def concurrent_embed_async():
+            """Concurrent async embeddings for better throughput."""
+            embedder = MixedbreadTextEmbedder(
+                model="mixedbread-ai/mxbai-embed-large-v1"
+            )
             
-        # Run async example
-        asyncio.run(embed_async())
+            # Create tasks for concurrent processing
+            tasks = [
+                embedder.run_async(text=query) for query in queries
+            ]
+            
+            start_time = time.time()
+            results = await asyncio.gather(*tasks)
+            end_time = time.time()
+            
+            print(f"✓ Concurrent async embedding completed:")
+            print(f"  Processed {len(results)} queries concurrently")
+            print(f"  Total time: {(end_time - start_time)*1000:.1f}ms")
+            print(f"  Average per query: {(end_time - start_time)*1000/len(results):.1f}ms")
+            return end_time - start_time
+        
+        async def async_comparison():
+            """Compare sync vs async performance."""
+            print("Single async embedding:")
+            async_time = await single_embed_async()
+            print()
+            
+            print("Concurrent async embeddings:")
+            concurrent_time = await concurrent_embed_async()
+            print()
+            
+            # Sync comparison
+            embedder = MixedbreadTextEmbedder(
+                model="mixedbread-ai/mxbai-embed-large-v1"
+            )
+            
+            start_time = time.time()
+            for query in queries:
+                embedder.run(text=query)
+            sync_time = time.time() - start_time
+            
+            print(f"Sync sequential processing:")
+            print(f"  Total time: {sync_time*1000:.1f}ms")
+            print(f"  Average per query: {sync_time*1000/len(queries):.1f}ms")
+            print()
+            
+            print("Performance comparison:")
+            print(f"  Sequential: {sync_time*1000:.1f}ms")
+            print(f"  Concurrent: {concurrent_time*1000:.1f}ms")
+            print(f"  Speedup: {sync_time/concurrent_time:.1f}x faster")
+        
+        # Run async examples
+        asyncio.run(async_comparison())
         
     except Exception as e:
         print(f"✗ Error with async processing: {e}")

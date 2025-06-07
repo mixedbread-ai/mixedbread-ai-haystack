@@ -94,6 +94,86 @@ embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-2d-large-v1")
 reranker = MixedbreadReranker(model="mixedbread-ai/mxbai-rerank-xsmall-v1")
 ```
 
+### Async Processing
+
+All components support async processing with concurrent capabilities:
+
+#### Single Async Operations
+```python
+import asyncio
+from mixedbread_ai_haystack import MixedbreadTextEmbedder, MixedbreadReranker
+
+async def single_async_example():
+    embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
+    
+    # Async text embedding
+    result = await embedder.run_async(text="What is machine learning?")
+    embedding = result["embedding"]
+    
+    # Async document reranking
+    reranker = MixedbreadReranker(model="mixedbread-ai/mxbai-rerank-large-v1")
+    reranked = await reranker.run_async(documents=docs, query="machine learning")
+
+# Run single async operations
+asyncio.run(single_async_example())
+```
+
+#### Concurrent Processing for Performance
+```python
+async def concurrent_processing():
+    embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
+    
+    queries = [
+        "What is artificial intelligence?",
+        "How does machine learning work?", 
+        "What are neural networks?"
+    ]
+    
+    # Process multiple queries concurrently
+    tasks = [embedder.run_async(text=query) for query in queries]
+    results = await asyncio.gather(*tasks)
+    
+    # Results now contains embeddings for all queries
+    embeddings = [result["embedding"] for result in results]
+    
+    print(f"Processed {len(embeddings)} queries concurrently")
+
+# Run concurrent processing
+asyncio.run(concurrent_processing())
+```
+
+#### Batch Document Processing
+```python
+from mixedbread_ai_haystack import MixedbreadDocumentEmbedder
+
+async def batch_document_processing():
+    embedder = MixedbreadDocumentEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
+    
+    # Split large document lists into batches for concurrent processing
+    batch_size = 10
+    document_batches = [documents[i:i + batch_size] for i in range(0, len(documents), batch_size)]
+    
+    # Process batches concurrently
+    tasks = [embedder.run_async(documents=batch) for batch in document_batches]
+    results = await asyncio.gather(*tasks)
+    
+    # Combine all embedded documents
+    all_embedded = []
+    for result in results:
+        all_embedded.extend(result["documents"])
+    
+    print(f"Embedded {len(all_embedded)} documents in {len(document_batches)} concurrent batches")
+
+# Run batch processing
+asyncio.run(batch_document_processing())
+```
+
+#### Performance Benefits
+Async processing provides:
+- **Concurrent execution** - Process multiple operations simultaneously
+- **Better throughput** - Faster processing for batch operations
+- **Efficient resource usage** - Optimal memory and CPU utilization
+
 ### Metadata Integration
 ```python
 from haystack import Document
@@ -107,43 +187,6 @@ embedder = MixedbreadDocumentEmbedder(
 reranker = MixedbreadReranker(top_k=5)
 ```
 
-## Migration Guide
-
-### Upgrading from v2.0.x to v2.1.x
-
-This version includes breaking changes that require code updates:
-
-#### Breaking Changes
-
-**1. Component Names Simplified (removed "AI")**
-```python
-# v2.0.x (old)
-from mixedbread_ai_haystack import (
-    MixedbreadAITextEmbedder,
-    MixedbreadAIDocumentEmbedder, 
-    MixedbreadAIReranker
-)
-
-# v2.1.x (new)
-from mixedbread_ai_haystack import (
-    MixedbreadTextEmbedder,
-    MixedbreadDocumentEmbedder,
-    MixedbreadReranker
-)
-```
-
-**2. Local Reranker Removed**
-- `LocalMixedbreadRerankV2` has been removed
-- Use the cloud-based `MixedbreadReranker` instead for all reranking needs
-
-**3. SDK Migration**
-- Migrated from `mixedbread_ai` to `mixedbread` SDK
-- API compatibility maintained, but underlying client implementation updated
-
-#### New Features in v2.1.x
-- **Document Parsing**: New `MixedbreadDocumentParser` component for file parsing
-- **Improved Async Support**: Better async/await patterns across components
-- **Enhanced Error Handling**: More robust error handling with graceful fallbacks
 
 ## Testing
 

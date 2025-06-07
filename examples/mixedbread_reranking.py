@@ -94,3 +94,76 @@ try:
 
 except Exception as e:
     print(f"Error: {e}")
+
+print("\n" + "=" * 70)
+
+# Example 3: Async Reranking
+print("\nExample 3: Async Reranking")
+print("-" * 50)
+
+try:
+    import asyncio
+    
+    async def async_reranking_example():
+        """Demonstrate async reranking with concurrent processing."""
+        reranker = MixedbreadReranker(
+            top_k=3,
+            model="mixedbread-ai/mxbai-rerank-large-v2",
+        )
+        
+        # Multiple queries to process concurrently
+        async_queries = [
+            "German bread and baking traditions",
+            "Traditional European desserts",
+            "Artisanal bread making techniques"
+        ]
+        
+        print("Processing multiple queries concurrently...")
+        
+        # Create tasks for concurrent processing
+        tasks = [
+            reranker.run_async(documents=documents, query=query) 
+            for query in async_queries
+        ]
+        
+        import time
+        start_time = time.time()
+        results = await asyncio.gather(*tasks)
+        end_time = time.time()
+        
+        print(f"✓ Concurrent reranking completed in {(end_time - start_time)*1000:.1f}ms")
+        print(f"✓ Processed {len(async_queries)} queries concurrently\n")
+        
+        # Display results
+        for i, (query, result) in enumerate(zip(async_queries, results)):
+            print(f"Query {i+1}: '{query}'")
+            print("Top reranked documents:")
+            for j, doc in enumerate(result["documents"], 1):
+                score = doc.meta.get("rerank_score", 0)
+                print(f"  {j}. [Score: {score:.4f}] {doc.content[:60]}...")
+            print()
+        
+        # Performance comparison
+        print("Performance comparison:")
+        
+        # Sync sequential processing
+        sync_start = time.time()
+        for query in async_queries:
+            reranker.run(documents=documents, query=query)
+        sync_time = time.time() - sync_start
+        
+        async_time = end_time - start_time
+        speedup = sync_time / async_time
+        
+        print(f"  Sequential: {sync_time*1000:.1f}ms")
+        print(f"  Concurrent: {async_time*1000:.1f}ms")
+        print(f"  Speedup: {speedup:.1f}x faster")
+    
+    # Run async example
+    asyncio.run(async_reranking_example())
+    
+except Exception as e:
+    print(f"✗ Error with async reranking: {e}")
+
+print("\n=== Reranking Examples Complete ===")
+print("Experiment with different queries and models to see how reranking affects document relevance!")

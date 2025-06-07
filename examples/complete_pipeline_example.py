@@ -243,8 +243,108 @@ def main():
     print("✓ Reranking: Improve relevance with cross-encoder models")
     print("✓ Pipeline Integration: Seamless Haystack pipeline integration")
 
+    # Step 7: Async Processing
+    print(f"\n\n7. Async Processing")
+    print("-" * 50)
+    
+    try:
+        import asyncio
+        
+        async def async_pipeline_demo():
+            """Demonstrate async processing capabilities."""
+            print("Setting up async components...")
+            
+            # Initialize components for async use
+            async_text_embedder = MixedbreadTextEmbedder(
+                model="mixedbread-ai/mxbai-embed-large-v1"
+            )
+            async_doc_embedder = MixedbreadDocumentEmbedder(
+                model="mixedbread-ai/mxbai-embed-large-v1"
+            )
+            async_reranker = MixedbreadReranker(
+                model="mixedbread-ai/mxbai-rerank-large-v1",
+                top_k=3
+            )
+            
+            # Test queries for concurrent processing
+            test_queries = [
+                "invoice total amount calculation",
+                "payment terms and conditions",
+                "billing address and contact info"
+            ]
+            
+            print(f"Processing {len(test_queries)} queries concurrently...")
+            
+            # Concurrent query embedding
+            start_time = time.time()
+            query_tasks = [
+                async_text_embedder.run_async(text=query) 
+                for query in test_queries
+            ]
+            await asyncio.gather(*query_tasks)
+            query_time = time.time() - start_time
+            
+            print(f"✓ Query embedding: {query_time*1000:.1f}ms for {len(test_queries)} queries")
+            
+            # Concurrent document reranking
+            start_time = time.time()
+            rerank_tasks = [
+                async_reranker.run_async(documents=embedded_documents[:5], query=query)
+                for query in test_queries
+            ]
+            rerank_results = await asyncio.gather(*rerank_tasks)
+            rerank_time = time.time() - start_time
+            
+            print(f"✓ Document reranking: {rerank_time*1000:.1f}ms for {len(test_queries)} queries")
+            
+            # Document embedding batches (if we had more documents)
+            if len(embedded_documents) >= 6:
+                doc_batches = [embedded_documents[i:i+3] for i in range(0, min(9, len(embedded_documents)), 3)]
+                
+                start_time = time.time()
+                batch_tasks = [
+                    async_doc_embedder.run_async(documents=batch)
+                    for batch in doc_batches
+                ]
+                batch_results = await asyncio.gather(*batch_tasks)
+                batch_time = time.time() - start_time
+                
+                total_docs = sum(len(result["documents"]) for result in batch_results)
+                print(f"✓ Batch document embedding: {batch_time*1000:.1f}ms for {total_docs} documents")
+            
+            # Performance summary
+            print(f"\nAsync Performance Summary:")
+            print(f"  Query processing: {len(test_queries)} queries in {query_time*1000:.1f}ms")
+            print(f"  Average per query: {query_time*1000/len(test_queries):.1f}ms")
+            print(f"  Reranking: {len(test_queries)} operations in {rerank_time*1000:.1f}ms")
+            
+            # Show sample results
+            print(f"\nSample async results:")
+            for i, (query, rerank_result) in enumerate(zip(test_queries, rerank_results)):
+                top_doc = rerank_result["documents"][0]
+                score = top_doc.meta.get("rerank_score", 0)
+                print(f"  Query {i+1}: '{query[:30]}...'")
+                print(f"    Top result (score: {score:.4f}): {top_doc.content[:50]}...")
+            
+            return {
+                'query_time': query_time,
+                'rerank_time': rerank_time,
+                'total_queries': len(test_queries)
+            }
+        
+        # Run async demo
+        async_results = asyncio.run(async_pipeline_demo())
+        
+        print(f"\n✓ Async processing demonstration completed!")
+        print(f"✓ Demonstrated concurrent query embedding and reranking")
+        print(f"✓ Total processing time: {(async_results['query_time'] + async_results['rerank_time'])*1000:.1f}ms")
+        
+    except Exception as e:
+        print(f"✗ Async processing demo failed: {e}")
+
     print(f"\n=== Complete Pipeline Example Finished ===")
     print("This demonstrates a full RAG system using all Mixedbread AI components!")
+    print("The async capabilities enable efficient concurrent processing for better throughput.")
 
 
 if __name__ == "__main__":

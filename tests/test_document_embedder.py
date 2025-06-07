@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from haystack import Document
 from haystack.utils import Secret
 from mixedbread_ai_haystack.embedders import MixedbreadDocumentEmbedder
@@ -172,3 +173,182 @@ class TestMixedbreadDocumentEmbedder:
             assert all(isinstance(x, float) for x in doc.embedding)
 
         assert "meta" in result
+
+    # Async Tests
+    
+    @pytest.mark.asyncio
+    async def test_run_async_empty_documents(self):
+        """
+        Test async run method with empty document list.
+        """
+        embedder = MixedbreadDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
+        result = await embedder.run_async(documents=[])
+
+        assert result["documents"] == []
+        assert "meta" in result
+
+    @pytest.mark.asyncio
+    async def test_run_async_wrong_input_format(self):
+        """
+        Test async run method with incorrect input format.
+        """
+        embedder = MixedbreadDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
+
+        with pytest.raises(
+            TypeError, match="Input must be a list of Haystack Documents"
+        ):
+            await embedder.run_async(documents="not a list")
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_basic_embedding(self):
+        """
+        Test basic async document embedding with real API call.
+        """
+        docs = [
+            Document(content="The Eiffel Tower is in Paris", meta={"topic": "Travel"}),
+            Document(
+                content="Machine learning is transforming industries",
+                meta={"topic": "AI"},
+            ),
+        ]
+
+        embedder_config = TestConfig.get_test_embedder_config()
+        embedder = MixedbreadDocumentEmbedder(**embedder_config)
+
+        result = await embedder.run_async(documents=docs)
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) > 0
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+        assert "meta" in result
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_documents_with_prompt(self):
+        """
+        Test async document embedding with custom prompt.
+        """
+        docs = [
+            Document(content="Python is a programming language"),
+            Document(content="JavaScript is used for web development"),
+        ]
+
+        embedder_config = TestConfig.get_test_embedder_config()
+        embedder = MixedbreadDocumentEmbedder(**embedder_config)
+
+        result = await embedder.run_async(
+            documents=docs,
+            prompt="Represent this document for semantic search:"
+        )
+
+        documents_with_embeddings = result["documents"]
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) > 0
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_concurrent_batch_processing(self):
+        """
+        Test concurrent async document embedding for performance.
+        """
+        embedder_config = TestConfig.get_test_embedder_config()
+        embedder = MixedbreadDocumentEmbedder(**embedder_config)
+
+        # Create multiple batches of documents
+        batch1 = [
+            Document(content="First batch document 1"),
+            Document(content="First batch document 2"),
+        ]
+        batch2 = [
+            Document(content="Second batch document 1"),
+            Document(content="Second batch document 2"),
+        ]
+        batch3 = [
+            Document(content="Third batch document 1"),
+            Document(content="Third batch document 2"),
+        ]
+
+        # Process batches concurrently
+        tasks = [
+            embedder.run_async(documents=batch1),
+            embedder.run_async(documents=batch2),
+            embedder.run_async(documents=batch3),
+        ]
+        results = await asyncio.gather(*tasks)
+
+        assert len(results) == 3
+        for result in results:
+            documents_with_embeddings = result["documents"]
+            assert len(documents_with_embeddings) == 2
+            for doc in documents_with_embeddings:
+                assert isinstance(doc.embedding, list)
+                assert len(doc.embedding) > 0
+
+    @pytest.mark.skipif(
+        not TestConfig.has_api_key(),
+        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_integration_async_sync_consistency(self):
+        """
+        Test that async and sync methods return consistent results.
+        """
+        docs = [
+            Document(content="Test consistency between sync and async"),
+            Document(content="Both methods should work identically"),
+        ]
+
+        embedder_config = TestConfig.get_test_embedder_config()
+        embedder = MixedbreadDocumentEmbedder(**embedder_config)
+
+        # Get both sync and async results
+        sync_result = embedder.run(documents=docs)
+        async_result = await embedder.run_async(documents=docs)
+
+        # Both should have the same structure
+        assert len(sync_result["documents"]) == len(async_result["documents"])
+        assert "meta" in sync_result
+        assert "meta" in async_result
+        
+        # Embeddings should have same length
+        for sync_doc, async_doc in zip(sync_result["documents"], async_result["documents"]):
+            assert len(sync_doc.embedding) == len(async_doc.embedding)
+        
+        # Meta should have same model
+        assert sync_result["meta"]["model"] == async_result["meta"]["model"]
+
+    @pytest.mark.asyncio
+    async def test_run_async_behavior_matches_sync(self):
+        """
+        Test that async method behavior matches sync method for edge cases.
+        """
+        embedder = MixedbreadDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
+        
+        # Test with empty documents
+        sync_result = embedder.run(documents=[])
+        async_result = await embedder.run_async(documents=[])
+        
+        assert sync_result["documents"] == async_result["documents"]
+        assert sync_result["meta"]["model"] == async_result["meta"]["model"]

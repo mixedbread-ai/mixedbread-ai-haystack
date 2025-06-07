@@ -125,3 +125,56 @@ for query in queries:
         print(f"Error during retrieval: {e}")
 
     print("-" * 40)
+
+print("\n=== Async Document Embedding ===\n")
+
+# Async document embedding example
+try:
+    import asyncio
+    
+    async def async_document_embedding():
+        """Demonstrate async document embedding with concurrent processing."""
+        document_embedder = MixedbreadDocumentEmbedder(
+            model="mixedbread-ai/mxbai-embed-large-v1",
+        )
+        
+        # Split documents into batches for concurrent processing
+        batch_size = 3
+        batches = [documents[i:i + batch_size] for i in range(0, len(documents), batch_size)]
+        
+        print(f"Processing {len(documents)} documents in {len(batches)} async batches...")
+        
+        # Process batches concurrently
+        tasks = [
+            document_embedder.run_async(documents=batch) 
+            for batch in batches
+        ]
+        
+        import time
+        start_time = time.time()
+        results = await asyncio.gather(*tasks)
+        end_time = time.time()
+        
+        # Combine results
+        all_embedded_docs = []
+        for result in results:
+            all_embedded_docs.extend(result["documents"])
+        
+        print(f"✓ Async embedding completed:")
+        print(f"  Total documents: {len(all_embedded_docs)}")
+        print(f"  Processing time: {(end_time - start_time)*1000:.1f}ms")
+        print(f"  Average per document: {(end_time - start_time)*1000/len(all_embedded_docs):.1f}ms")
+        print(f"  Embedding dimensions: {len(all_embedded_docs[0].embedding)}")
+        
+        return all_embedded_docs
+    
+    # Run async example
+    embedded_docs = asyncio.run(async_document_embedding())
+    
+    print("\n✓ Async document embedding completed successfully!")
+    
+except Exception as e:
+    print(f"✗ Error with async document embedding: {e}")
+
+print("\n=== All Examples Complete ===")
+print("Documents are now embedded and can be used for retrieval!")

@@ -35,6 +35,7 @@ Source = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -44,6 +45,13 @@ exclude = ["data*", "tests*", "examples*"]
 [tool.pytest.ini_options]
 markers = [
     "integration: integration tests that call the Mixedbread AI API (deselect with '-m \"not integration\"')",
+    "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
 ]
 log_cli = true
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.0.0",
+]
 
