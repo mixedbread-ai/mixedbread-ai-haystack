@@ -1,4 +1,5 @@
 import time
+import asyncio
 from typing import Optional, List, Dict, Any, Union, Literal
 from pathlib import Path
 
@@ -7,6 +8,9 @@ from haystack.dataclasses import ByteStream
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 from mixedbread_ai_haystack.common.client import MixedbreadClient
+from mixedbread_ai_haystack.common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @component
@@ -27,6 +31,20 @@ class MixedbreadDocumentParser(MixedbreadClient):
         timeout: Optional[float] = 60.0,
         max_retries: Optional[int] = 2,
     ):
+        """
+        Initialize the MixedbreadDocumentParser.
+        
+        Args:
+            api_key: Mixedbread API key.
+            chunking_strategy: Strategy for chunking documents ("page", "semantic", etc.).
+            return_format: Output format ("markdown" or "plain").
+            element_types: Types of elements to extract.
+            max_wait_time: Maximum time to wait for parsing completion.
+            poll_interval: Interval between polling for job status.
+            base_url: Optional custom API base URL.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum retry attempts.
+        """
         super(MixedbreadDocumentParser, self).__init__(
             api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries
         )
@@ -55,7 +73,15 @@ class MixedbreadDocumentParser(MixedbreadClient):
         return default_from_dict(cls, data)
 
     def _get_file_name(self, source: Union[str, Path, ByteStream]) -> str:
-        """Extract file name from various source types."""
+        """
+        Extract file name from various source types.
+        
+        Args:
+            source: File path string, Path object, or ByteStream.
+            
+        Returns:
+            Extracted filename.
+        """
         if isinstance(source, ByteStream):
             file_path = source.meta.get("file_path", "ByteStream")
             return Path(file_path).name if file_path != "ByteStream" else "ByteStream"
@@ -181,6 +207,16 @@ class MixedbreadDocumentParser(MixedbreadClient):
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ) -> Dict[str, Any]:
+        """
+        Parse documents from various sources.
+        
+        Args:
+            sources: List of file paths or ByteStream objects to parse.
+            meta: Optional metadata to attach to documents.
+            
+        Returns:
+            Dictionary containing parsed documents.
+        """
         if not sources:
             return {"documents": []}
 
@@ -209,11 +245,43 @@ class MixedbreadDocumentParser(MixedbreadClient):
 
             except Exception as e:
                 error_msg = f"Failed to parse {source}: {str(e)}"
-                print(f"Warning: {error_msg}")
+                logger.warning(error_msg)
                 error_doc = self._create_error_document(source, error_msg, source_meta)
                 all_documents.append(error_doc)
 
         return {"documents": all_documents}
+
+    async def _process_file_async(
+        self, source: Union[str, Path, ByteStream], meta: Dict[str, Any]
+    ) -> List[Document]:
+        """Process a single file asynchronously."""
+        try:
+            # Run the sync operations in executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            
+            # Upload file
+            file_id = await loop.run_in_executor(None, self._upload_file, source)
+            
+            # Create parsing job
+            job_id = await loop.run_in_executor(None, self._create_parsing_job, file_id)
+            
+            # Wait for completion
+            parsing_result = await loop.run_in_executor(
+                None, self._wait_for_job_completion, job_id
+            )
+            
+            # Create documents
+            documents = await loop.run_in_executor(
+                None, self._create_documents_from_result, parsing_result, source, meta
+            )
+            
+            return documents
+            
+        except Exception as e:
+            error_msg = f"Failed to parse {source}: {str(e)}"
+            logger.warning(error_msg)
+            error_doc = self._create_error_document(source, error_msg, meta)
+            return [error_doc]
 
     @component.output_types(documents=List[Document])
     async def run_async(
@@ -221,6 +289,49 @@ class MixedbreadDocumentParser(MixedbreadClient):
         sources: List[Union[str, Path, ByteStream]],
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     ) -> Dict[str, Any]:
-        # TODO: Implement proper async version with asyncio.gather for concurrent processing
-        # For now, process sequentially but could be improved to process multiple files concurrently
-        return self.run(sources=sources, meta=meta)
+        """
+        Asynchronously parse documents from various sources using concurrent processing.
+        
+        Args:
+            sources: List of file paths or ByteStream objects to parse.
+            meta: Optional metadata to attach to documents.
+            
+        Returns:
+            Dictionary containing parsed documents.
+        """
+        """Process multiple files concurrently using asyncio.gather."""
+        if not sources:
+            return {"documents": []}
+
+        # Normalize meta to a list
+        if meta is None:
+            meta_list = [{}] * len(sources)
+        elif isinstance(meta, dict):
+            meta_list = [meta] * len(sources)
+        else:
+            if len(meta) != len(sources):
+                raise ValueError(
+                    f"Length of meta list ({len(meta)}) must match length of sources ({len(sources)})"
+                )
+            meta_list = meta
+
+        # Process files concurrently
+        tasks = [
+            self._process_file_async(source, source_meta)
+            for source, source_meta in zip(sources, meta_list)
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Flatten results and handle exceptions
+        all_documents = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                error_msg = f"Failed to process {sources[i]}: {str(result)}"
+                logger.warning(error_msg)
+                error_doc = self._create_error_document(sources[i], error_msg, meta_list[i])
+                all_documents.append(error_doc)
+            else:
+                all_documents.extend(result)
+
+        return {"documents": all_documents}

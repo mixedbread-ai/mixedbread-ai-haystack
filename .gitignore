@@ -6,7 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Ignore data directory but keep example files for tests
 data/
+!data/acme_invoice.pdf
 
 # Distribution / packaging
 .Python
@@ -188,3 +190,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# Claude Code
+#  Claude Code specific files that shouldn't be committed to the repository
+CLAUDE.md

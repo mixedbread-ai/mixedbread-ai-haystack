@@ -350,6 +350,8 @@ class TestMixedbreadDocumentParser:
     def test_integration_basic_parsing(self):
         """
         Test basic document parsing with real API call.
+        
+        Uses the example PDF file included in the repository for testing.
         """
         import os
         from pathlib import Path

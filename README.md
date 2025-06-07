@@ -107,6 +107,44 @@ embedder = MixedbreadDocumentEmbedder(
 reranker = MixedbreadReranker(top_k=5)
 ```
 
+## Migration Guide
+
+### Upgrading from v2.0.x to v2.1.x
+
+This version includes breaking changes that require code updates:
+
+#### Breaking Changes
+
+**1. Component Names Simplified (removed "AI")**
+```python
+# v2.0.x (old)
+from mixedbread_ai_haystack import (
+    MixedbreadAITextEmbedder,
+    MixedbreadAIDocumentEmbedder, 
+    MixedbreadAIReranker
+)
+
+# v2.1.x (new)
+from mixedbread_ai_haystack import (
+    MixedbreadTextEmbedder,
+    MixedbreadDocumentEmbedder,
+    MixedbreadReranker
+)
+```
+
+**2. Local Reranker Removed**
+- `LocalMixedbreadRerankV2` has been removed
+- Use the cloud-based `MixedbreadReranker` instead for all reranking needs
+
+**3. SDK Migration**
+- Migrated from `mixedbread_ai` to `mixedbread` SDK
+- API compatibility maintained, but underlying client implementation updated
+
+#### New Features in v2.1.x
+- **Document Parsing**: New `MixedbreadDocumentParser` component for file parsing
+- **Improved Async Support**: Better async/await patterns across components
+- **Enhanced Error Handling**: More robust error handling with graceful fallbacks
+
 ## Testing
 
 The package includes comprehensive tests. See [`tests/README.md`](./tests/README.md) for testing instructions.

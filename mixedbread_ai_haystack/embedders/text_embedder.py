@@ -1,11 +1,28 @@
 from typing import Any, Dict, List, Optional, TypedDict, Union
-from haystack import component, default_to_dict, default_from_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack import component
+from haystack.utils import Secret
+
 from mixedbread_ai_haystack.common.client import MixedbreadClient
+from mixedbread_ai_haystack.common.mixins import SerializationMixin
+from mixedbread_ai_haystack.common.utils import create_response_meta, create_empty_embedding_response
+from mixedbread_ai_haystack.common.logging import get_logger
 from mixedbread_ai_haystack.embedders.embedding_types import MixedbreadEmbeddingType
+
+logger = get_logger(__name__)
 
 
 class TextEmbedderMeta(TypedDict):
+    """
+    Metadata structure for text embedding responses.
+    
+    Attributes:
+        model: Name of the embedding model used.
+        usage: Token usage statistics.
+        normalized: Whether embeddings are normalized.
+        encoding_format: Format of the returned embeddings.
+        dimensions: Dimensionality of the embeddings.
+        object: API response object type.
+    """
     model: str
     usage: Dict[str, int]
     normalized: bool
@@ -15,7 +32,7 @@ class TextEmbedderMeta(TypedDict):
 
 
 @component
-class MixedbreadTextEmbedder(MixedbreadClient):
+class MixedbreadTextEmbedder(SerializationMixin, MixedbreadClient):
     """
     Embed a single string using the Mixedbread Embeddings API.
     """
@@ -34,6 +51,20 @@ class MixedbreadTextEmbedder(MixedbreadClient):
         timeout: Optional[float] = 60.0,
         max_retries: Optional[int] = 2,
     ):
+        """
+        Initialize the MixedbreadTextEmbedder.
+        
+        Args:
+            api_key: Mixedbread API key.
+            model: Model name for text embedding.
+            normalized: Whether to normalize embeddings.
+            encoding_format: Format for returned embeddings.
+            dimensions: Target embedding dimensions.
+            prompt: Optional prompt to customize embedding behavior.
+            base_url: Optional custom API base URL.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum retry attempts.
+        """
         super(MixedbreadTextEmbedder, self).__init__(
             api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries
         )
@@ -47,6 +78,9 @@ class MixedbreadTextEmbedder(MixedbreadClient):
         self.prompt = prompt
 
     def to_dict(self) -> Dict[str, Any]:
+        from haystack import default_to_dict
+        from haystack.utils import deserialize_secrets_inplace
+        
         client_params = MixedbreadClient.to_dict(self)["init_parameters"]
         return default_to_dict(
             self,
@@ -60,6 +94,9 @@ class MixedbreadTextEmbedder(MixedbreadClient):
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadTextEmbedder":
+        from haystack import default_from_dict
+        from haystack.utils import deserialize_secrets_inplace
+        
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         ef_val = data["init_parameters"].get("encoding_format")
         if isinstance(ef_val, str):
@@ -70,50 +107,78 @@ class MixedbreadTextEmbedder(MixedbreadClient):
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
     def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
-        response = self.client.embed(
-            model=self.model,
-            input=[text],
-            normalized=self.normalized,
-            encoding_format=self.encoding_format.value,
-            dimensions=self.dimensions,
-            prompt=prompt or self.prompt,
-        )
+        """
+        Embed a single text string.
+        
+        Args:
+            text: Text to embed.
+            prompt: Optional prompt to override the default.
+            
+        Returns:
+            Dictionary containing embedding vector and metadata.
+            
+        Raises:
+            Exception: If the embedding request fails.
+        """
+        if not text.strip():
+            logger.warning("Empty text provided for embedding")
+            return create_empty_embedding_response(self.model)
+            
+        try:
+            response = self.client.embed(
+                model=self.model,
+                input=[text],
+                normalized=self.normalized,
+                encoding_format=self.encoding_format.value,
+                dimensions=self.dimensions,
+                prompt=prompt or self.prompt,
+            )
 
-        embedding = response.data[0].embedding if response.data else []
+            embedding = response.data[0].embedding if response.data else []
+            meta = create_response_meta(response, include_embedder_fields=True)
 
-        meta = {
-            "model": response.model,
-            "usage": response.usage.model_dump(),
-            "normalized": response.normalized,
-            "encoding_format": response.encoding_format,
-            "dimensions": response.dimensions,
-            "object": response.object,
-        }
-
-        return {"embedding": embedding, "meta": meta}
+            return {"embedding": embedding, "meta": meta}
+            
+        except Exception as e:
+            logger.error(f"Error during text embedding: {str(e)}")
+            raise
 
     @component.output_types(embedding=List[float], meta=TextEmbedderMeta)
     async def run_async(
         self, text: str, prompt: Optional[str] = None
     ) -> Dict[str, Any]:
-        response = await self.async_client.embed(
-            model=self.model,
-            input=[text],
-            normalized=self.normalized,
-            encoding_format=self.encoding_format.value,
-            dimensions=self.dimensions,
-            prompt=prompt or self.prompt,
-        )
+        """
+        Asynchronously embed a single text string.
+        
+        Args:
+            text: Text to embed.
+            prompt: Optional prompt to override the default.
+            
+        Returns:
+            Dictionary containing embedding vector and metadata.
+            
+        Raises:
+            Exception: If the embedding request fails.
+        """
+        if not text.strip():
+            logger.warning("Empty text provided for embedding")
+            return create_empty_embedding_response(self.model)
+            
+        try:
+            response = await self.async_client.embed(
+                model=self.model,
+                input=[text],
+                normalized=self.normalized,
+                encoding_format=self.encoding_format.value,
+                dimensions=self.dimensions,
+                prompt=prompt or self.prompt,
+            )
 
-        embedding = response.data[0].embedding if response.data else []
+            embedding = response.data[0].embedding if response.data else []
+            meta = create_response_meta(response, include_embedder_fields=True)
 
-        meta = {
-            "model": response.model,
-            "usage": response.usage.model_dump(),
-            "normalized": response.normalized,
-            "encoding_format": response.encoding_format,
-            "dimensions": response.dimensions,
-            "object": response.object,
-        }
-
-        return {"embedding": embedding, "meta": meta}
+            return {"embedding": embedding, "meta": meta}
+            
+        except Exception as e:
+            logger.error(f"Error during async text embedding: {str(e)}")
+            raise
