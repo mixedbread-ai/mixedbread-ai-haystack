@@ -8,18 +8,18 @@ The package includes:
 - Text and document embedders for generating embeddings
 - Document reranker for improving search relevance
 - Document parser for extracting structured content from files
-- Shared client for API communication
+- Vector store retriever for searching indexed documents
 """
 
 from .embedders import MixedbreadDocumentEmbedder, MixedbreadTextEmbedder
 from .rerankers import MixedbreadReranker
 from .converters import MixedbreadDocumentParser
-from .common import MixedbreadClient
+from .retrievers import MixedbreadVectorStoreRetriever
 
 __all__ = [
     "MixedbreadDocumentEmbedder",
     "MixedbreadTextEmbedder",
     "MixedbreadReranker",
     "MixedbreadDocumentParser",
-    "MixedbreadClient",
+    "MixedbreadVectorStoreRetriever",
 ]

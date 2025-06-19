@@ -504,7 +504,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "haystack-ai", specifier = ">=2.0.0" },
-    { name = "mixedbread-ai", specifier = ">=0.3.1" },
+    { name = "mixedbread-ai", specifier = ">=0.8.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
 ]

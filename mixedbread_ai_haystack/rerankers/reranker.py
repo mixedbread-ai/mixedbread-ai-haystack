@@ -1,23 +1,16 @@
 from typing import Any, Dict, List, Optional
-from haystack import Document, component
-from haystack.utils import Secret
 
-from mixedbread_ai_haystack.common.client import MixedbreadClient
-from mixedbread_ai_haystack.common.mixins import SerializationMixin
-from mixedbread_ai_haystack.common.utils import (
-    validate_documents,
-    create_response_meta,
-    create_empty_reranking_response
-)
-from mixedbread_ai_haystack.common.logging import get_logger
-
-logger = get_logger(__name__)
+from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
+from mixedbread import AsyncMixedbread, Mixedbread
 
 
 @component
-class MixedbreadReranker(SerializationMixin, MixedbreadClient):
+class MixedbreadReranker:
     """
     Rerank documents using the Mixedbread Reranking API.
+    
+    Supports both synchronous and asynchronous reranking operations.
     """
 
     def __init__(
@@ -42,115 +35,63 @@ class MixedbreadReranker(SerializationMixin, MixedbreadClient):
             timeout: Request timeout in seconds.
             max_retries: Maximum retry attempts.
         """
-        super(MixedbreadReranker, self).__init__(
-            api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries
-        )
+        resolved_api_key = api_key.resolve_value()
+        if not resolved_api_key:
+            raise ValueError("Mixedbread API key not found. Set MXBAI_API_KEY environment variable.")
+
+        self.api_key = api_key
         self.model = model
         self.top_k = top_k
         self.return_input = return_input
+        self.base_url = base_url
+        self.timeout = timeout
+        self.max_retries = max_retries
+
+        # Initialize clients
+        self.client = Mixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+
+        self.aclient = AsyncMixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        from haystack import default_to_dict
-        
-        client_params = MixedbreadClient.to_dict(self)["init_parameters"]
+        """Serialize the reranker configuration."""
         return default_to_dict(
             self,
-            **client_params,
+            api_key=self.api_key.to_dict(),
             model=self.model,
             top_k=self.top_k,
             return_input=self.return_input,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadReranker":
-        from haystack import default_from_dict
-        from haystack.utils import deserialize_secrets_inplace
-        
+        """Create reranker from dictionary."""
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    def _run_impl(self, documents: List[Document], query: str, use_async: bool = False):
-        """
-        Internal implementation for both sync and async document reranking.
-        
-        Args:
-            documents: List of documents to rerank.
-            query: Query to rank documents against.
-            use_async: Whether to use async client.
-            
-        Returns:
-            Dictionary containing reranked documents and metadata, or awaitable if async.
-            
-        Raises:
-            Exception: If the reranking request fails.
-        """
-        validate_documents(documents)
-        
-        if not documents:
-            logger.info("Empty document list provided for reranking")
-            result = create_empty_reranking_response(self.model)
-            if use_async:
-                async def _return_empty():
-                    return result
-                return _return_empty()
-            return result
-            
-        if not query.strip():
-            logger.warning("Empty query provided for reranking")
-            result = {"documents": documents, "meta": create_empty_reranking_response(self.model)["meta"]}
-            if use_async:
-                async def _return_empty_query():
-                    return result
-                return _return_empty_query()
-            return result
+    def _create_metadata(self, response: Any, num_results: int) -> Dict[str, Any]:
+        """Create metadata from API response."""
+        return {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "top_k": num_results,
+        }
 
-        try:
-            texts_to_rerank = [doc.content or "" for doc in documents]
-            client = self.async_client if use_async else self.client
-            
-            rerank_call = client.rerank(
-                model=self.model,
-                query=query,
-                input=texts_to_rerank,
-                top_k=self.top_k,
-                return_input=self.return_input,
-            )
-            
-            if use_async:
-                # Return the awaitable coroutine for async processing
-                async def _process_async_response():
-                    response = await rerank_call
-                    
-                    reranked_documents = []
-                    for result in response.data:
-                        original_doc = documents[result.index]
-                        original_doc.meta["rerank_score"] = result.score
-                        reranked_documents.append(original_doc)
-
-                    meta = create_response_meta(response, include_reranker_fields=True)
-                    meta["top_k"] = len(reranked_documents)
-                    
-                    return {"documents": reranked_documents, "meta": meta}
-                return _process_async_response()
-            else:
-                # Process sync response immediately
-                response = rerank_call
-                
-                reranked_documents = []
-                for result in response.data:
-                    original_doc = documents[result.index]
-                    original_doc.meta["rerank_score"] = result.score
-                    reranked_documents.append(original_doc)
-
-                meta = create_response_meta(response, include_reranker_fields=True)
-                meta["top_k"] = len(reranked_documents)
-                
-                return {"documents": reranked_documents, "meta": meta}
-            
-        except Exception as e:
-            error_msg = f"Error during {'async ' if use_async else ''}document reranking: {str(e)}"
-            logger.error(error_msg)
-            raise
+    def _prepare_texts(self, documents: List[Document]) -> List[str]:
+        """Extract text content from documents."""
+        return [doc.content or "" for doc in documents]
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document], query: str) -> Dict[str, Any]:
@@ -163,11 +104,51 @@ class MixedbreadReranker(SerializationMixin, MixedbreadClient):
             
         Returns:
             Dictionary containing reranked documents and metadata.
-            
-        Raises:
-            Exception: If the reranking request fails.
         """
-        return self._run_impl(documents, query, use_async=False)
+        if not documents:
+            return {
+                "documents": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                }
+            }
+
+        # Validate documents
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+            raise TypeError("Input must be a list of Haystack Documents.")
+
+        if not query.strip():
+            return {
+                "documents": documents,
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": len(documents),
+                }
+            }
+
+        texts = self._prepare_texts(documents)
+        
+        response = self.client.rerank(
+            model=self.model,
+            query=query,
+            input=texts,
+            top_k=self.top_k,
+            return_input=self.return_input,
+        )
+
+        # Create reranked documents with scores
+        reranked_documents = []
+        for result in response.data:
+            original_doc = documents[result.index]
+            # Add rerank score to document metadata
+            original_doc.meta["rerank_score"] = result.score
+            reranked_documents.append(original_doc)
+
+        meta = self._create_metadata(response, len(reranked_documents))
+        return {"documents": reranked_documents, "meta": meta}
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     async def run_async(self, documents: List[Document], query: str) -> Dict[str, Any]:
@@ -180,8 +161,48 @@ class MixedbreadReranker(SerializationMixin, MixedbreadClient):
             
         Returns:
             Dictionary containing reranked documents and metadata.
-            
-        Raises:
-            Exception: If the reranking request fails.
         """
-        return await self._run_impl(documents, query, use_async=True)
+        if not documents:
+            return {
+                "documents": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                }
+            }
+
+        # Validate documents
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+            raise TypeError("Input must be a list of Haystack Documents.")
+
+        if not query.strip():
+            return {
+                "documents": documents,
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": len(documents),
+                }
+            }
+
+        texts = self._prepare_texts(documents)
+        
+        response = await self.aclient.rerank(
+            model=self.model,
+            query=query,
+            input=texts,
+            top_k=self.top_k,
+            return_input=self.return_input,
+        )
+
+        # Create reranked documents with scores
+        reranked_documents = []
+        for result in response.data:
+            original_doc = documents[result.index]
+            # Add rerank score to document metadata
+            original_doc.meta["rerank_score"] = result.score
+            reranked_documents.append(original_doc)
+
+        meta = self._create_metadata(response, len(reranked_documents))
+        return {"documents": reranked_documents, "meta": meta}

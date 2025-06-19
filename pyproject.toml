@@ -9,8 +9,8 @@ description = "Mixedbread Haystack integration"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
-keywords = ["haystack", "mixedbread-ai", "embedding", "reranking", "parsing", "nlp", "llm"]
-authors = [{ name = "Mixedbread AI", email = "support@mixedbread.com" }]
+keywords = ["haystack", "mixedbread", "embedding", "reranking", "parsing", "nlp", "llm", "mixedbread-ai"]
+authors = [{ name = "Mixedbread", email = "support@mixedbread.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "haystack-ai>=2.0.0",
-    "mixedbread-ai>=0.3.1"
+    "mixedbread-ai>=0.8.1"
 ]
 
 [project.urls]
@@ -44,7 +44,7 @@ exclude = ["data*", "tests*", "examples*"]
 
 [tool.pytest.ini_options]
 markers = [
-    "integration: integration tests that call the Mixedbread AI API (deselect with '-m \"not integration\"')",
+    "integration: integration tests that call the Mixedbread API (deselect with '-m \"not integration\"')",
     "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
 ]
 log_cli = true
