@@ -9,14 +9,14 @@ from mixedbread import AsyncMixedbread, Mixedbread
 class MixedbreadReranker:
     """
     Rerank documents using the Mixedbread Reranking API.
-    
+
     Supports both synchronous and asynchronous reranking operations.
     """
 
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
-        model: str = "mixedbread-ai/mxbai-rerank-large-v1",
+        model: str = "mixedbread-ai/mxbai-rerank-large-v2",
         top_k: int = 10,
         return_input: Optional[bool] = False,
         base_url: Optional[str] = None,
@@ -25,7 +25,7 @@ class MixedbreadReranker:
     ):
         """
         Initialize the MixedbreadReranker.
-        
+
         Args:
             api_key: Mixedbread API key.
             model: Model name for document reranking.
@@ -37,7 +37,9 @@ class MixedbreadReranker:
         """
         resolved_api_key = api_key.resolve_value()
         if not resolved_api_key:
-            raise ValueError("Mixedbread API key not found. Set MXBAI_API_KEY environment variable.")
+            raise ValueError(
+                "Mixedbread API key not found. Set MXBAI_API_KEY environment variable."
+            )
 
         self.api_key = api_key
         self.model = model
@@ -97,11 +99,11 @@ class MixedbreadReranker:
     def run(self, documents: List[Document], query: str) -> Dict[str, Any]:
         """
         Rerank documents based on relevance to a query.
-        
+
         Args:
             documents: List of documents to rerank.
             query: Query to rank documents against.
-            
+
         Returns:
             Dictionary containing reranked documents and metadata.
         """
@@ -112,11 +114,13 @@ class MixedbreadReranker:
                     "model": self.model,
                     "usage": {"prompt_tokens": 0, "total_tokens": 0},
                     "top_k": 0,
-                }
+                },
             }
 
         # Validate documents
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
             raise TypeError("Input must be a list of Haystack Documents.")
 
         if not query.strip():
@@ -126,11 +130,11 @@ class MixedbreadReranker:
                     "model": self.model,
                     "usage": {"prompt_tokens": 0, "total_tokens": 0},
                     "top_k": len(documents),
-                }
+                },
             }
 
         texts = self._prepare_texts(documents)
-        
+
         response = self.client.rerank(
             model=self.model,
             query=query,
@@ -154,11 +158,11 @@ class MixedbreadReranker:
     async def run_async(self, documents: List[Document], query: str) -> Dict[str, Any]:
         """
         Asynchronously rerank documents based on relevance to a query.
-        
+
         Args:
             documents: List of documents to rerank.
             query: Query to rank documents against.
-            
+
         Returns:
             Dictionary containing reranked documents and metadata.
         """
@@ -169,11 +173,13 @@ class MixedbreadReranker:
                     "model": self.model,
                     "usage": {"prompt_tokens": 0, "total_tokens": 0},
                     "top_k": 0,
-                }
+                },
             }
 
         # Validate documents
-        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
             raise TypeError("Input must be a list of Haystack Documents.")
 
         if not query.strip():
@@ -183,11 +189,11 @@ class MixedbreadReranker:
                     "model": self.model,
                     "usage": {"prompt_tokens": 0, "total_tokens": 0},
                     "top_k": len(documents),
-                }
+                },
             }
 
         texts = self._prepare_texts(documents)
-        
+
         response = await self.aclient.rerank(
             model=self.model,
             query=query,
