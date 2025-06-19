@@ -65,12 +65,20 @@ See the [`examples/`](./examples/) directory for complete usage examples:
 
 ## Testing
 
+The project includes comprehensive unit tests for all components.
+
 ```bash
 # Install dev dependencies
 pip install -e .[dev]
 
-# Run tests
+# Run all tests
 pytest tests/
+
+# Run specific test files
+pytest tests/test_text_embedder.py
+
+# Run with verbose output
+pytest -v tests/
 ```
 
 ## Documentation
