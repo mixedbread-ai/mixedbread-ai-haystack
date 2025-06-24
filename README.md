@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/mixedbread-ai-haystack.svg)](https://badge.fury.io/py/mixedbread-ai-haystack)
 [![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/)
 
-The official **Mixedbread AI** integration for **Haystack**, providing state-of-the-art embedding, reranking, document parsing, and retrieval capabilities that generate vectors capturing deep contextual meaning.
+**Mixedbread AI** integration for **Haystack**. This package provides seamless access to Mixedbread's multimodal AI capabilities, enabling intelligent search that understands meaning across text, images, code, PDFs, and diverse document types. Use our state of the art embedding and reranking models as part of your haystack workflows.
 
 ## Components
 
@@ -32,7 +32,6 @@ export MXBAI_API_KEY="your-api-key"
 ```python
 from mixedbread_ai_haystack import MixedbreadTextEmbedder
 
-# Embed text
 embedder = MixedbreadTextEmbedder(model="mixedbread-ai/mxbai-embed-large-v1")
 result = embedder.run(text="What is the capital of France?")
 embedding = result["embedding"]
@@ -50,7 +49,6 @@ async def embed_text():
     result = await embedder.run_async(text="Async embedding example")
     return result["embedding"]
 
-# Run async
 embedding = asyncio.run(embed_text())
 ```
 
