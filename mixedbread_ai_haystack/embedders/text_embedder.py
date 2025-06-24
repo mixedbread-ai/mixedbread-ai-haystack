@@ -1,143 +1,180 @@
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 
-from haystack import component, default_to_dict
-from mixedbread_ai import EncodingFormat, TruncationStrategy, Usage, ObjectType
-
-from mixedbread_ai_haystack.common.client import MixedbreadAIClient
-
-
-class EmbedderMeta(TypedDict):
-    usage: Usage
-    model: str
-    object: ObjectType
-    normalized: bool
-    encoding_format: EncodingFormat
-    dimensions: int
+from haystack import component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
+from mixedbread import AsyncMixedbread, Mixedbread
 
 
 @component
-class MixedbreadAITextEmbedder(MixedbreadAIClient):
+class MixedbreadTextEmbedder:
     """
-    A component for generating text embeddings using Mixedbread AI's embedding API.
+    Embed a single string using the Mixedbread Embeddings API.
 
-    Find out more at https://mixedbread.com/docs
-
-    To use this you'll need a Mixedbread AI API key - either pass it to
-    the api_key parameter or set the MXBAI_API_KEY environment variable.
-
-    API keys are available on https://mixedbread.ai - it's free to sign up and trial API
-    keys work with this implementation.
-
-    Usage example:
-        ```python
-        from mixedbread_ai_haystack import MixedbreadAITextEmbedder
-
-        text_embedder = MixedbreadAITextEmbedder(
-            model="mixedbread-ai/mxbai-embed-large-v1"
-        )
-
-        text_to_embed = "Bread is love, bread is life."
-
-        print(text_embedder.run(text_to_embed))
-        ```
-
-    Attributes:
-        model (str): The model to use for generating embeddings.
-        prefix (str): The prefix to add to the text before embedding.
-        suffix (str): The suffix to add to the text before embedding.
-        normalized (bool): Whether to normalize the embeddings.
-        encoding_format (EncodingFormat): The format for encoding the embeddings.
-        truncation_strategy (TruncationStrategy): The strategy for truncating the text.
-        dimensions (Optional[int]): The desired number of dimensions in the output vectors.
-            Only applicable for Matryoshka-based models.
-        prompt (Optional[str]): The prompt to use for the embedding model.
+    Supports both synchronous and asynchronous embedding operations.
     """
 
     def __init__(
         self,
+        api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
         model: str = "mixedbread-ai/mxbai-embed-large-v1",
-        prefix: str = "",
-        suffix: str = "",
         normalized: bool = True,
-        encoding_format: EncodingFormat = EncodingFormat.FLOAT,
-        truncation_strategy: TruncationStrategy = TruncationStrategy.START,
+        encoding_format: str = "float",
         dimensions: Optional[int] = None,
         prompt: Optional[str] = None,
-        **kwargs,
+        base_url: Optional[str] = None,
+        timeout: Optional[float] = 60.0,
+        max_retries: Optional[int] = 2,
     ):
-        super(MixedbreadAITextEmbedder, self).__init__(**kwargs)
-
-        self.model = model
-        self.prefix = prefix
-        self.suffix = suffix
-        self.normalized = normalized
-        self.encoding_format = encoding_format
-        self.truncation_strategy = truncation_strategy
-        self.dimensions = dimensions
-        self.prompt = prompt
-
-    def to_dict(self) -> Dict[str, Any]:
         """
-        Serializes the component to a dictionary.
+        Initialize the MixedbreadTextEmbedder.
 
-        Returns:
-            Dict[str, Any]: The serialized component data.
+        Args:
+            api_key: Mixedbread API key.
+            model: Model name for text embedding.
+            normalized: Whether to normalize embeddings.
+            encoding_format: Format for returned embeddings.
+            dimensions: Target embedding dimensions.
+            prompt: Optional prompt to customize embedding behavior.
+            base_url: Optional custom API base URL.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum retry attempts.
         """
-        parent_params = super(MixedbreadAITextEmbedder, self).to_dict()[
-            "init_parameters"
-        ]
-
-        return default_to_dict(
-            self,
-            **parent_params,
-            model=self.model,
-            prefix=self.prefix,
-            suffix=self.suffix,
-            normalized=self.normalized,
-            encoding_format=self.encoding_format,
-            truncation_strategy=self.truncation_strategy,
-            dimensions=self.dimensions,
-            prompt=self.prompt,
-        )
-
-    @component.output_types(embedding=List[float], meta=EmbedderMeta)
-    def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Embeds a string of text and returns the embedding and metadata.
-
-        Parameters:
-            text (str): The text to embed.
-            prompt (Optional[str]): An optional prompt to use with the embedding model.
-
-        Returns:
-            Dict[str, Any]: A dictionary with the following keys:
-                - `embedding`: The embedding of the input text.
-                - `meta`: Metadata about the request.
-
-        Raises:
-            TypeError: If the input is not a string.
-        """
-        if not isinstance(text, str):
-            raise TypeError(
-                "MixedbreadAITextEmbedder expects a string as an input. "
-                "In case you want to embed a list of Documents, please use the MixedbreadAIDocumentEmbedder."
+        resolved_api_key = api_key.resolve_value()
+        if not resolved_api_key:
+            raise ValueError(
+                "Mixedbread API key not found. Set MXBAI_API_KEY environment variable."
             )
 
-        text_to_embed = self.prefix + text + self.suffix
-        response = self._client.embeddings(
-            model=self.model,
-            input=text_to_embed,
-            normalized=self.normalized,
-            encoding_format=self.encoding_format,
-            truncation_strategy=self.truncation_strategy,
-            dimensions=self.dimensions,
-            prompt=prompt or self.prompt,
-            request_options=self._request_options,
+        self.api_key = api_key
+        self.model = model
+        self.normalized = normalized
+        self.encoding_format = encoding_format
+        self.dimensions = dimensions
+        self.prompt = prompt
+        self.base_url = base_url
+        self.timeout = timeout
+        self.max_retries = max_retries
+
+        # Initialize clients
+        self.client = Mixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
+        self.aclient = AsyncMixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the embedder configuration."""
+        return default_to_dict(
+            self,
+            api_key=self.api_key.to_dict(),
+            model=self.model,
+            normalized=self.normalized,
+            encoding_format=self.encoding_format,
+            dimensions=self.dimensions,
+            prompt=self.prompt,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadTextEmbedder":
+        """Create embedder from dictionary."""
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
+
+    def _create_metadata(self, response: Any) -> Dict[str, Any]:
+        """Create metadata from API response."""
         return {
-            "embedding": response.data[0].embedding,
-            "meta": EmbedderMeta(
-                **response.dict(exclude={"data", "usage"}), usage=response.usage
-            ),
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "normalized": response.normalized,
+            "encoding_format": response.encoding_format,
+            "dimensions": response.dimensions,
         }
+
+    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    def run(self, text: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Embed a single text string.
+
+        Args:
+            text: Text to embed.
+            prompt: Optional prompt to override the default.
+
+        Returns:
+            Dictionary containing embedding vector and metadata.
+        """
+        if not text.strip():
+            return {
+                "embedding": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "normalized": self.normalized,
+                    "encoding_format": self.encoding_format,
+                    "dimensions": 0,
+                },
+            }
+
+        response = self.client.embed(
+            model=self.model,
+            input=[text],
+            normalized=self.normalized,
+            encoding_format=self.encoding_format,
+            dimensions=self.dimensions,
+            prompt=prompt or self.prompt,
+        )
+
+        embedding = response.data[0].embedding if response.data else []
+        meta = self._create_metadata(response)
+
+        return {"embedding": embedding, "meta": meta}
+
+    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    async def run_async(
+        self, text: str, prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Asynchronously embed a single text string.
+
+        Args:
+            text: Text to embed.
+            prompt: Optional prompt to override the default.
+
+        Returns:
+            Dictionary containing embedding vector and metadata.
+        """
+        if not text.strip():
+            return {
+                "embedding": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "normalized": self.normalized,
+                    "encoding_format": self.encoding_format,
+                    "dimensions": 0,
+                },
+            }
+
+        response = await self.aclient.embed(
+            model=self.model,
+            input=[text],
+            normalized=self.normalized,
+            encoding_format=self.encoding_format,
+            dimensions=self.dimensions,
+            prompt=prompt or self.prompt,
+        )
+
+        embedding = response.data[0].embedding if response.data else []
+        meta = self._create_metadata(response)
+
+        return {"embedding": embedding, "meta": meta}

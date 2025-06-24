@@ -1,171 +1,247 @@
-import os
-
+"""
+Tests for MixedbreadTextEmbedder.
+"""
 import pytest
+from unittest.mock import Mock, patch, AsyncMock
+
+from haystack import Document
 from haystack.utils import Secret
-from mixedbread_ai import EncodingFormat, TruncationStrategy, ObjectType
-from mixedbread_ai.types import Usage
 
-from mixedbread_ai_haystack.embedders import MixedbreadAITextEmbedder
-from mixedbread_ai_haystack.embedders.text_embedder import EmbedderMeta
-from .utils import mock_embeddings_response
-
-DEFAULT_VALUES = {
-    "base_url": None,
-    "timeout": 60.0,
-    "max_retries": 3,
-    "model": "mixedbread-ai/mxbai-embed-large-v1",
-    "prefix": "",
-    "suffix": "",
-    "normalized": True,
-    "encoding_format": EncodingFormat.FLOAT,
-    "truncation_strategy": TruncationStrategy.START,
-    "dimensions": None,
-    "prompt": None,
-}
+from mixedbread_ai_haystack import MixedbreadTextEmbedder
 
 
-class TestMixedbreadAITextEmbedder:
-    def test_init_default(self, monkeypatch):
-        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        embedder = MixedbreadAITextEmbedder()
-
-        assert embedder.api_key == Secret.from_env_var("MXBAI_API_KEY")
-        assert embedder.base_url == DEFAULT_VALUES["base_url"]
-        assert embedder.timeout == DEFAULT_VALUES["timeout"]
-        assert embedder.max_retries == DEFAULT_VALUES["max_retries"]
-
-        assert embedder.model == DEFAULT_VALUES["model"]
-        assert embedder.prefix == DEFAULT_VALUES["prefix"]
-        assert embedder.suffix == DEFAULT_VALUES["suffix"]
-        assert embedder.normalized == DEFAULT_VALUES["normalized"]
-        assert embedder.encoding_format == DEFAULT_VALUES["encoding_format"]
-        assert embedder.truncation_strategy == DEFAULT_VALUES["truncation_strategy"]
-        assert embedder.dimensions == DEFAULT_VALUES["dimensions"]
-        assert embedder.prompt == DEFAULT_VALUES["prompt"]
-
-    def test_init_with_parameters(self):
-        embedder = MixedbreadAITextEmbedder(
-            api_key=Secret.from_token("test-api-key"),
-            base_url="http://example.com",
-            timeout=50.0,
-            max_retries=10,
-            model="model",
-            prefix="prefix",
-            suffix="suffix",
-            normalized=False,
-            encoding_format=EncodingFormat.BINARY,
-            truncation_strategy=TruncationStrategy.END,
-            dimensions=500,
-            prompt="prompt",
+class TestMixedbreadTextEmbedder:
+    
+    def test_init(self):
+        """Test embedder initialization."""
+        embedder = MixedbreadTextEmbedder(
+            api_key=Secret.from_token("test-key"),
+            model="test-model",
+            normalized=False
         )
+        
+        assert embedder.model == "test-model"
+        assert embedder.normalized == False
+        assert embedder.encoding_format == "float"
+        assert embedder.dimensions is None
+        assert embedder.timeout == 60.0
 
-        assert embedder.api_key == Secret.from_token("test-api-key")
-        assert embedder.base_url == "http://example.com"
-        assert embedder.timeout == 50.0
-        assert embedder.max_retries == 10
+    def test_init_missing_api_key(self):
+        """Test initialization with missing API key."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(ValueError, match="None of the following authentication environment variables are set"):
+                MixedbreadTextEmbedder()
 
-        assert embedder.model == "model"
-        assert embedder.prefix == "prefix"
-        assert embedder.suffix == "suffix"
-        assert not embedder.normalized
-        assert embedder.encoding_format == EncodingFormat.BINARY
-        assert embedder.truncation_strategy == TruncationStrategy.END
-        assert embedder.dimensions == 500
-        assert embedder.prompt == "prompt"
+    def test_to_dict(self):
+        """Test serialization to dictionary."""
+        with patch.dict("os.environ", {"MXBAI_API_KEY": "test-key"}):
+            embedder = MixedbreadTextEmbedder(model="test-model")
+            
+            data = embedder.to_dict()
+            
+            assert data["type"] == "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadTextEmbedder"
+            assert data["init_parameters"]["model"] == "test-model"
+            assert "api_key" in data["init_parameters"]
 
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("MXBAI_API_KEY", raising=False)
-        with pytest.raises(Exception):
-            MixedbreadAITextEmbedder()
-
-    def test_to_dict(self, monkeypatch):
-        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        component = MixedbreadAITextEmbedder()
-        data = component.to_dict()
-        assert data == {
-            "type": "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadAITextEmbedder",
+    def test_from_dict(self):
+        """Test deserialization from dictionary."""
+        data = {
+            "type": "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadTextEmbedder",
             "init_parameters": {
-                **DEFAULT_VALUES,
-                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
-            },
+                "api_key": {"type": "env_var", "env_vars": ["MXBAI_API_KEY"], "strict": True},
+                "model": "test-model",
+                "normalized": False
+            }
         }
+        
+        with patch.dict("os.environ", {"MXBAI_API_KEY": "test-key"}):
+            embedder = MixedbreadTextEmbedder.from_dict(data)
+            assert embedder.model == "test-model"
+            assert embedder.normalized == False
 
-    def test_to_dict_with_custom_init_parameters(self, monkeypatch):
-        monkeypatch.setenv("MXBAI_API_KEY", "fake-api-key")
-        component = MixedbreadAITextEmbedder(
-            base_url="http://example.com",
-            timeout=50.0,
-            max_retries=10,
-            model="model",
-            prefix="prefix",
-            suffix="suffix",
-            normalized=False,
-            encoding_format=EncodingFormat.BINARY,
-            truncation_strategy=TruncationStrategy.END,
-            dimensions=500,
-            prompt="prompt",
-        )
-        data = component.to_dict()
-        assert data == {
-            "type": "mixedbread_ai_haystack.embedders.text_embedder.MixedbreadAITextEmbedder",
-            "init_parameters": {
-                "api_key": Secret.from_env_var("MXBAI_API_KEY").to_dict(),
-                "base_url": "http://example.com",
-                "timeout": 50.0,
-                "max_retries": 10,
-                "model": "model",
-                "prefix": "prefix",
-                "suffix": "suffix",
-                "normalized": False,
-                "encoding_format": EncodingFormat.BINARY,
-                "truncation_strategy": TruncationStrategy.END,
-                "dimensions": 500,
-                "prompt": "prompt",
-            },
-        }
-
-    def test_run(self, mock_embeddings_response):
-        model = "mixedbread-ai/mxbai-embed-large-v1"
-        embedder = MixedbreadAITextEmbedder(
-            api_key=Secret.from_token("fake-api-key"),
-            model=model,
-            prefix="prefix ",
-            suffix=" suffix",
-        )
-        result = embedder.run(text="The food was delicious")
-
-        assert len(result["embedding"]) == 3
-        assert all(isinstance(x, float) for x in result["embedding"])
-        assert result["meta"] == EmbedderMeta(
-            usage=Usage(prompt_tokens=4, total_tokens=4),
-            model=model,
-            object=ObjectType.LIST,
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.Mixedbread')
+    def test_run_success(self, mock_client):
+        """Test successful text embedding."""
+        # Mock the client and response
+        mock_client_instance = Mock()
+        mock_client.return_value = mock_client_instance
+        
+        mock_response = Mock()
+        mock_response.model = "test-model"
+        mock_response.usage.model_dump.return_value = {"prompt_tokens": 5, "total_tokens": 5}
+        mock_response.normalized = True
+        mock_response.encoding_format = "float"
+        mock_response.dimensions = 1024
+        mock_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
+        
+        mock_client_instance.embed.return_value = mock_response
+        
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        result = embedder.run("test text")
+        
+        assert result["embedding"] == [0.1, 0.2, 0.3]
+        assert result["meta"]["model"] == "test-model"
+        assert result["meta"]["normalized"] == True
+        assert result["meta"]["dimensions"] == 1024
+        
+        # Verify API call
+        mock_client_instance.embed.assert_called_once_with(
+            model="mixedbread-ai/mxbai-embed-large-v1",
+            input=["test text"],
             normalized=True,
-            encoding_format=EncodingFormat.FLOAT,
-            dimensions=3,
+            encoding_format="float",
+            dimensions=None,
+            prompt=None,
         )
 
-    def test_run_wrong_input_format(self):
-        embedder = MixedbreadAITextEmbedder(api_key=Secret.from_token("fake-api-key"))
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.Mixedbread')
+    def test_run_empty_text(self, mock_client):
+        """Test embedding empty text."""
+        mock_client_instance = Mock()
+        mock_client.return_value = mock_client_instance
+        
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        result = embedder.run("")
+        
+        assert result["embedding"] == []
+        assert result["meta"]["model"] == "mixedbread-ai/mxbai-embed-large-v1"
+        assert result["meta"]["dimensions"] == 0
+        
+        # Should not call the API for empty text
+        mock_client_instance.embed.assert_not_called()
 
-        list_integers_input = [1, 2, 3]
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.Mixedbread')
+    def test_run_with_prompt(self, mock_client):
+        """Test embedding with custom prompt."""
+        mock_client_instance = Mock()
+        mock_client.return_value = mock_client_instance
+        
+        mock_response = Mock()
+        mock_response.model = "test-model"
+        mock_response.usage.model_dump.return_value = {"prompt_tokens": 5, "total_tokens": 5}
+        mock_response.normalized = True
+        mock_response.encoding_format = "float"
+        mock_response.dimensions = 1024
+        mock_response.data = [Mock(embedding=[0.1, 0.2, 0.3])]
+        
+        mock_client_instance.embed.return_value = mock_response
+        
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        result = embedder.run("test text", prompt="Custom prompt:")
+        
+        mock_client_instance.embed.assert_called_once_with(
+            model="mixedbread-ai/mxbai-embed-large-v1",
+            input=["test text"],
+            normalized=True,
+            encoding_format="float",
+            dimensions=None,
+            prompt="Custom prompt:",
+        )
 
-        with pytest.raises(
-            TypeError,
-            match="MixedbreadAITextEmbedder expects a string as an input. "
-            "In case you want to embed a list of Documents, "
-            "please use the MixedbreadAIDocumentEmbedder.",
-        ):
-            embedder.run(text=list_integers_input)
+    @pytest.mark.asyncio
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.AsyncMixedbread')
+    async def test_run_async_success(self, mock_async_client):
+        """Test successful async text embedding."""
+        # Mock the async client and response
+        mock_client_instance = AsyncMock()
+        mock_async_client.return_value = mock_client_instance
+        
+        mock_response = Mock()
+        mock_response.model = "test-model"
+        mock_response.usage.model_dump.return_value = {"prompt_tokens": 5, "total_tokens": 5}
+        mock_response.normalized = True
+        mock_response.encoding_format = "float"
+        mock_response.dimensions = 1024
+        mock_response.data = [Mock(embedding=[0.4, 0.5, 0.6])]
+        
+        mock_client_instance.embed.return_value = mock_response
+        
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        result = await embedder.run_async("async test text")
+        
+        assert result["embedding"] == [0.4, 0.5, 0.6]
+        assert result["meta"]["model"] == "test-model"
+        
+        # Verify async API call
+        mock_client_instance.embed.assert_called_once_with(
+            model="mixedbread-ai/mxbai-embed-large-v1",
+            input=["async test text"],
+            normalized=True,
+            encoding_format="float",
+            dimensions=None,
+            prompt=None,
+        )
 
-    @pytest.mark.skipif(
-        not os.environ.get("MXBAI_API_KEY", None),
-        reason="Export an env var called MXBAI_API_KEY containing the Mixedbread AI API key to run this test.",
-    )
-    def test_live_run_with_real_text(self):
-        embedder = MixedbreadAITextEmbedder()
-        result = embedder.run(text="This is a live test with real text input.")
+    @pytest.mark.asyncio
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.AsyncMixedbread')
+    async def test_run_async_empty_text(self, mock_async_client):
+        """Test async embedding with empty text."""
+        mock_client_instance = AsyncMock()
+        mock_async_client.return_value = mock_client_instance
+        
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        result = await embedder.run_async("   ")  # Whitespace only
+        
+        assert result["embedding"] == []
+        assert result["meta"]["dimensions"] == 0
+        
+        # Should not call the API for empty text
+        mock_client_instance.embed.assert_not_called()
 
-        assert isinstance(result["embedding"], list)
-        assert all(isinstance(x, float) for x in result["embedding"])
-        assert "meta" in result
+    def test_create_metadata(self):
+        """Test metadata creation from response."""
+        embedder = MixedbreadTextEmbedder(api_key=Secret.from_token("test-key"))
+        
+        mock_response = Mock()
+        mock_response.model = "test-model"
+        mock_response.usage.model_dump.return_value = {"prompt_tokens": 10, "total_tokens": 10}
+        mock_response.normalized = False
+        mock_response.encoding_format = "float16"
+        mock_response.dimensions = 512
+        
+        meta = embedder._create_metadata(mock_response)
+        
+        assert meta["model"] == "test-model"
+        assert meta["usage"]["prompt_tokens"] == 10
+        assert meta["normalized"] == False
+        assert meta["encoding_format"] == "float16"
+        assert meta["dimensions"] == 512
+
+    @patch('mixedbread_ai_haystack.embedders.text_embedder.Mixedbread')
+    def test_custom_encoding_format(self, mock_client):
+        """Test embedder with custom encoding format."""
+        mock_client_instance = Mock()
+        mock_client.return_value = mock_client_instance
+        
+        mock_response = Mock()
+        mock_response.model = "test-model"
+        mock_response.usage.model_dump.return_value = {"prompt_tokens": 5, "total_tokens": 5}
+        mock_response.normalized = False
+        mock_response.encoding_format = "float16"
+        mock_response.dimensions = 256
+        mock_response.data = [Mock(embedding=[0.1, 0.2])]
+        
+        mock_client_instance.embed.return_value = mock_response
+        
+        embedder = MixedbreadTextEmbedder(
+            api_key=Secret.from_token("test-key"),
+            encoding_format="float16",
+            dimensions=256,
+            normalized=False
+        )
+        
+        result = embedder.run("test")
+        
+        mock_client_instance.embed.assert_called_once_with(
+            model="mixedbread-ai/mxbai-embed-large-v1",
+            input=["test"],
+            normalized=False,
+            encoding_format="float16",
+            dimensions=256,
+            prompt=None,
+        )

@@ -1,2 +1,3 @@
-from .local_reranker_v2 import LocalMixedbreadAIRerankerV2
-from .reranker import MixedbreadAIReranker
+from .reranker import MixedbreadReranker
+
+__all__ = ["MixedbreadReranker"]

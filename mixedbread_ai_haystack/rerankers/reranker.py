@@ -1,128 +1,214 @@
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional
 
-from haystack import Document, component, default_to_dict, logging
-from mixedbread_ai import Usage, ObjectType
-
-from mixedbread_ai_haystack.common.client import MixedbreadAIClient
-
-logger = logging.getLogger(__name__)
-
-
-class RerankerMeta(TypedDict, total=False):
-    usage: Usage
-    model: str
-    object: ObjectType
-    top_k: int
+from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
+from mixedbread import AsyncMixedbread, Mixedbread
 
 
 @component
-class MixedbreadAIReranker(MixedbreadAIClient):
+class MixedbreadReranker:
     """
-    Ranks Documents based on their similarity to the query using Mixedbread AI's reranking API.
+    Rerank documents using the Mixedbread Reranking API.
 
-    Documents are indexed from most to least semantically relevant to the query.
-
-    Find out more at https://mixedbread.com/docs
-
-    Usage example:
-    ```python
-    from haystack import Document
-    from mixedbread_ai_haystack import MixedbreadAIReranker
-
-    ranker = MixedbreadAIReranker(model="mixedbread-ai/mxbai-rerank-large-v1", top_k=2)
-
-    docs = [Document(content="Paris"), Document(content="Berlin")]
-    query = "What is the capital of Germany?"
-    output = ranker.run(query=query, documents=docs)
-    docs = output["documents"]
-    ```
+    Supports both synchronous and asynchronous reranking operations.
     """
 
     def __init__(
         self,
-        model: str = "default",
-        top_k: int = 20,
-        meta_fields_to_rank: Optional[List[str]] = None,
-        **kwargs,
+        api_key: Secret = Secret.from_env_var("MXBAI_API_KEY"),
+        model: str = "mixedbread-ai/mxbai-rerank-large-v2",
+        top_k: int = 10,
+        return_input: Optional[bool] = False,
+        base_url: Optional[str] = None,
+        timeout: Optional[float] = 60.0,
+        max_retries: Optional[int] = 2,
     ):
         """
-        Initializes an instance of the 'MixedbreadAIReranker'.
+        Initialize the MixedbreadReranker.
 
-        Parameters:
-            model (str): Mixedbread AI model name.
-            top_k (int): The maximum number of documents to return.
-            meta_fields_to_rank (Optional[List[str]]): List of meta fields that should be concatenated
-                with the document content for reranking.
+        Args:
+            api_key: Mixedbread API key.
+            model: Model name for document reranking.
+            top_k: Maximum number of documents to return.
+            return_input: Whether to return input documents in response.
+            base_url: Optional custom API base URL.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum retry attempts.
         """
-        super(MixedbreadAIReranker, self).__init__(**kwargs)
+        resolved_api_key = api_key.resolve_value()
+        if not resolved_api_key:
+            raise ValueError(
+                "Mixedbread API key not found. Set MXBAI_API_KEY environment variable."
+            )
 
+        self.api_key = api_key
         self.model = model
         self.top_k = top_k
-        self.meta_fields_to_rank = meta_fields_to_rank or []
+        self.return_input = return_input
+        self.base_url = base_url
+        self.timeout = timeout
+        self.max_retries = max_retries
+
+        # Initialize clients
+        self.client = Mixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+
+        self.aclient = AsyncMixedbread(
+            api_key=resolved_api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Serializes the component to a dictionary.
-
-        Returns:
-            Dict[str, Any]: Dictionary with serialized data.
-        """
-        parent_params = super(MixedbreadAIReranker, self).to_dict()["init_parameters"]
-
+        """Serialize the reranker configuration."""
         return default_to_dict(
             self,
-            **parent_params,
+            api_key=self.api_key.to_dict(),
             model=self.model,
             top_k=self.top_k,
-            meta_fields_to_rank=self.meta_fields_to_rank,
+            return_input=self.return_input,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
         )
 
-    @component.output_types(documents=List[Document], meta=RerankerMeta)
-    def run(
-        self, query: str, documents: List[Document], top_k: Optional[int] = None
-    ) -> Dict[str, Any]:
-        """
-        Uses the Mixedbread Reranker to re-rank the list of documents based on the query.
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MixedbreadReranker":
+        """Create reranker from dictionary."""
+        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        return default_from_dict(cls, data)
 
-        Parameters:
-            query (str): Query string.
-            documents (List[Document]): List of Documents to be ranked.
-            top_k (Optional[int]): The maximum number of Documents you want the Ranker to return.
+    def _create_metadata(self, response: Any, num_results: int) -> Dict[str, Any]:
+        """Create metadata from API response."""
+        return {
+            "model": response.model,
+            "usage": response.usage.model_dump(),
+            "top_k": num_results,
+        }
+
+    def _prepare_texts(self, documents: List[Document]) -> List[str]:
+        """Extract text content from documents."""
+        return [doc.content or "" for doc in documents]
+
+    @component.output_types(documents=List[Document], meta=Dict[str, Any])
+    def run(self, documents: List[Document], query: str) -> Dict[str, Any]:
+        """
+        Rerank documents based on relevance to a query.
+
+        Args:
+            documents: List of documents to rerank.
+            query: Query to rank documents against.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the ranked documents with the following key:
-                - `documents`: List of Documents most similar to the given query in descending order of similarity.
-
-        Raises:
-            ValueError: If `top_k` is not > 0.
+            Dictionary containing reranked documents and metadata.
         """
-        top_k = top_k or self.top_k
-        if top_k <= 0:
-            raise ValueError(f"top_k must be > 0, but got {top_k}")
+        if not documents:
+            return {
+                "documents": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                },
+            }
 
-        dicts = [doc.to_dict() for doc in documents]
-        rank_fields = list({*self.meta_fields_to_rank, "content"})
+        # Validate documents
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
+            raise TypeError("Input must be a list of Haystack Documents.")
 
-        response = self._client.reranking(
+        if not query.strip():
+            return {
+                "documents": documents,
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": len(documents),
+                },
+            }
+
+        texts = self._prepare_texts(documents)
+
+        response = self.client.rerank(
             model=self.model,
             query=query,
-            input=dicts,
-            rank_fields=rank_fields,
-            top_k=top_k,
-            return_input=False,
-            request_options=self._request_options,
+            input=texts,
+            top_k=self.top_k,
+            return_input=self.return_input,
         )
 
-        sorted_docs = []
+        # Create reranked documents with scores
+        reranked_documents = []
         for result in response.data:
-            doc = documents[result.index]
-            doc.score = result.score
-            sorted_docs.append(doc)
+            original_doc = documents[result.index]
+            # Add rerank score to document metadata
+            original_doc.meta["rerank_score"] = result.score
+            reranked_documents.append(original_doc)
 
-        return {
-            "documents": sorted_docs,
-            "meta": RerankerMeta(
-                **response.dict(exclude={"data", "usage", "return_input"}),
-                usage=response.usage,
-            ),
-        }
+        meta = self._create_metadata(response, len(reranked_documents))
+        return {"documents": reranked_documents, "meta": meta}
+
+    @component.output_types(documents=List[Document], meta=Dict[str, Any])
+    async def run_async(self, documents: List[Document], query: str) -> Dict[str, Any]:
+        """
+        Asynchronously rerank documents based on relevance to a query.
+
+        Args:
+            documents: List of documents to rerank.
+            query: Query to rank documents against.
+
+        Returns:
+            Dictionary containing reranked documents and metadata.
+        """
+        if not documents:
+            return {
+                "documents": [],
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": 0,
+                },
+            }
+
+        # Validate documents
+        if not isinstance(documents, list) or (
+            documents and not isinstance(documents[0], Document)
+        ):
+            raise TypeError("Input must be a list of Haystack Documents.")
+
+        if not query.strip():
+            return {
+                "documents": documents,
+                "meta": {
+                    "model": self.model,
+                    "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                    "top_k": len(documents),
+                },
+            }
+
+        texts = self._prepare_texts(documents)
+
+        response = await self.aclient.rerank(
+            model=self.model,
+            query=query,
+            input=texts,
+            top_k=self.top_k,
+            return_input=self.return_input,
+        )
+
+        # Create reranked documents with scores
+        reranked_documents = []
+        for result in response.data:
+            original_doc = documents[result.index]
+            # Add rerank score to document metadata
+            original_doc.meta["rerank_score"] = result.score
+            reranked_documents.append(original_doc)
+
+        meta = self._create_metadata(response, len(reranked_documents))
+        return {"documents": reranked_documents, "meta": meta}
