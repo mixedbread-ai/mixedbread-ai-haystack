@@ -4,31 +4,37 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mixedbread-ai-haystack"
-version = "2.1.1"
-description = "Mixedbread Haystack integration"
+version = "2.1.2"
+description = "The official Mixedbread AI integration for Haystack"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 keywords = ["haystack", "mixedbread", "embedding", "reranking", "parsing", "nlp", "llm", "mixedbread-ai"]
-authors = [{ name = "Mixedbread", email = "support@mixedbread.com" }]
+authors = [{ name = "Mixedbread AI", email = "support@mixedbread.ai" }]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "haystack-ai>=2.0.0",
-    "mixedbread-ai>=0.8.1"
+    "mixedbread-ai>=0.8.1",
+    "pydantic>=2.0.0"
 ]
 
 [project.urls]
-Homepage = "https://mixedbread.com"
-Documentation = "https://github.com/mixedbread-ai/mixedbread-ai-haystack#readme"
+Homepage = "https://mixedbread.ai"
+Documentation = "https://docs.mixedbread.ai"
+Repository = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
 Issues = "https://github.com/mixedbread-ai/mixedbread-ai-haystack/issues"
 Source = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
 
@@ -38,9 +44,15 @@ dev = [
     "pytest-asyncio>=0.21.0",
 ]
 
+[tool.setuptools]
+packages = {find = {}}
+
 [tool.setuptools.packages.find]
 include = ["mixedbread_ai_haystack*"]
 exclude = ["data*", "tests*", "examples*"]
+
+[tool.setuptools.package-data]
+mixedbread_ai_haystack = ["py.typed"]
 
 [tool.pytest.ini_options]
 markers = [

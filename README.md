@@ -3,15 +3,15 @@
 [![PyPI version](https://badge.fury.io/py/mixedbread-ai-haystack.svg)](https://badge.fury.io/py/mixedbread-ai-haystack)
 [![Python versions](https://img.shields.io/pypi/pyversions/mixedbread-ai-haystack.svg)](https://pypi.org/project/mixedbread-ai-haystack/)
 
-**Mixedbread AI** integration for **Haystack 2.2.1, providing state-of-the-art embedding, reranking, document parsing, and retrieval capabilities.
+The official **Mixedbread AI** integration for **Haystack**, providing state-of-the-art embedding, reranking, document parsing, and retrieval capabilities that generate vectors capturing deep contextual meaning.
 
 ## Components
 
-- **MixedbreadTextEmbedder** - Embed single texts and queries
-- **MixedbreadDocumentEmbedder** - Embed documents with metadata support  
-- **MixedbreadReranker** - Rerank documents by relevance
-- **MixedbreadDocumentParser** - Parse and extract content from various file formats
-- **MixedbreadVectorStoreRetriever** - Search indexed documents with vector similarity
+- **MixedbreadTextEmbedder** - State-of-the-art embedding models that generate vectors capturing deep contextual meaning for single texts and queries
+- **MixedbreadDocumentEmbedder** - Embed full documents using advanced embedding models  
+- **MixedbreadReranker** - Powerful semantic reranking that significantly boosts search relevance
+- **MixedbreadDocumentParser** - Layout-aware document parsing supporting PDF, PPTX, HTML and more formats
+- **MixedbreadVectorStoreRetriever** - AI-native search engine that enables conversational queries across multimodal data
 
 ## Installation
 
@@ -21,10 +21,10 @@ pip install mixedbread-ai-haystack
 
 ## Quick Start
 
-Get your API key from the [Mixedbread Platform](https://www.platform.mixedbread.com/) and set it as an environment variable:
+Get your API key from the [Mixedbread Platform](https://platform.mixedbread.com/) and set it as an environment variable:
 
 ```bash
-export MIXEDBREAD_API_KEY="your-api-key"
+export MXBAI_API_KEY="your-api-key"
 ```
 
 ### Basic Usage
@@ -76,18 +76,15 @@ pytest tests/
 
 # Run specific test files
 pytest tests/test_text_embedder.py
-
-# Run with verbose output
-pytest -v tests/
 ```
 
 ## Documentation
 
-Learn more at [mixedbread.com/docs](https://www.mixedbread.com/docs):
-- [Embeddings API](https://www.mixedbread.com/docs/embeddings/overview)
-- [Reranking API](https://www.mixedbread.com/docs/reranking/overview)  
-- [Parsing API](https://www.mixedbread.com/docs/parsing/overview)
-- [Vector Stores API](https://www.mixedbread.com/docs/vector-stores/overview)
+Learn more at [mixedbread.com/docs](https://docs.mixedbread.com):
+- [Embeddings API](https://docs.mixedbread.com/embeddings/overview)
+- [Reranking API](https://docs.mixedbread.com/reranking/overview)  
+- [Parsing API](https://docs.mixedbread.com/parsing/overview)
+- [Vector Stores API](https://docs.mixedbread.com/vector-stores/overview)
 
 ## License
 
