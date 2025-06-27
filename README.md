@@ -8,7 +8,7 @@
 ## Components
 
 - **MixedbreadTextEmbedder** - State-of-the-art embedding models that generate vectors capturing deep contextual meaning for single texts and queries
-- **MixedbreadDocumentEmbedder** - Embed full documents using advanced embedding models  
+- **MixedbreadDocumentEmbedder** - Embed full documents using advanced embedding models
 - **MixedbreadReranker** - Powerful semantic reranking that significantly boosts search relevance
 - **MixedbreadDocumentParser** - Layout-aware document parsing supporting PDF, PPTX, HTML and more formats
 - **MixedbreadVectorStoreRetriever** - AI-native search engine that enables conversational queries across multimodal data
@@ -56,33 +56,38 @@ embedding = asyncio.run(embed_text())
 
 See the [`examples/`](./examples/) directory for complete usage examples:
 
-- **[Embedders](./examples/embedders_example.py)** - Text and document embedding
-- **[Reranker](./examples/reranker_example.py)** - Document reranking
-- **[Document Parser](./examples/document_parser_example.py)** - File parsing
-- **[Vector Retriever](./examples/retriever_example.py)** - Vector-based search
+- **[Embedders](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/examples/embedders_example.py)** - Text and document embedding
+- **[Reranker](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/examples/reranker_example.py)** - Document reranking
+- **[Document Parser](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/examples/document_parser_example.py)** - File parsing
+- **[Vector Retriever](https://github.com/mixedbread-ai/mixedbread-ai-haystack/blob/main/examples/retriever_example.py)** - Vector-based search
 
 ## Testing
-
-The project includes comprehensive unit tests for all components.
 
 ```bash
 # Install dev dependencies
 pip install -e .[dev]
 
 # Run all tests
-pytest tests/
+python run_tests.py all
+
+# Run only unit tests
+python run_tests.py unit
+
+# Run only integration tests (requires API key)
+python run_tests.py integration
 
 # Run specific test files
-pytest tests/test_text_embedder.py
+python run_tests.py tests/test_text_embedder.py
 ```
 
 ## Documentation
 
-Learn more at [mixedbread.com/docs](https://docs.mixedbread.com):
-- [Embeddings API](https://docs.mixedbread.com/embeddings/overview)
-- [Reranking API](https://docs.mixedbread.com/reranking/overview)  
-- [Parsing API](https://docs.mixedbread.com/parsing/overview)
-- [Vector Stores API](https://docs.mixedbread.com/vector-stores/overview)
+Learn more at [mixedbread.com/docs](https://www.mixedbread.com/docs):
+
+- [Embeddings API](https://www.mixedbread.com/docs/embeddings/overview)
+- [Reranking API](https://www.mixedbread.com/docsreranking/overview)
+- [Parsing API](https://www.mixedbread.com/docs/parsing/overview)
+- [Vector Stores API](https://www.mixedbread.com/docs/vector-stores/overview)
 
 ## License
 

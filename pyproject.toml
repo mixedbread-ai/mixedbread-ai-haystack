@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mixedbread-ai-haystack"
-version = "2.1.2"
+version = "2.1.4"
 description = "The official Mixedbread AI integration for Haystack"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -46,13 +46,7 @@ dev = [
 
 [tool.setuptools]
 packages = {find = {}}
-
-[tool.setuptools.packages.find]
-include = ["mixedbread_ai_haystack*"]
-exclude = ["data*", "tests*", "examples*"]
-
-[tool.setuptools.package-data]
-mixedbread_ai_haystack = ["py.typed"]
+package-data = {"mixedbread_ai_haystack" = ["py.typed"]}
 
 [tool.pytest.ini_options]
 markers = [
