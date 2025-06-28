@@ -113,7 +113,7 @@ class TestMixedbreadReranker:
         
         # Verify API call
         mock_client_instance.rerank.assert_called_once_with(
-            model="mixedbread-ai/mxbai-rerank-large-v1",
+            model="mixedbread-ai/mxbai-rerank-large-v2",
             query="test query",
             input=["First document", "Second document"],
             top_k=10,
@@ -131,7 +131,7 @@ class TestMixedbreadReranker:
         result = reranker.run(documents=[], query="test query")
         
         assert result["documents"] == []
-        assert result["meta"]["model"] == "mixedbread-ai/mxbai-rerank-large-v1"
+        assert result["meta"]["model"] == "mixedbread-ai/mxbai-rerank-large-v2"
         assert result["meta"]["top_k"] == 0
         
         # Should not call the API for empty documents
@@ -238,7 +238,7 @@ class TestMixedbreadReranker:
         
         # Verify async API call
         mock_client_instance.rerank.assert_called_once_with(
-            model="mixedbread-ai/mxbai-rerank-large-v1",
+            model="mixedbread-ai/mxbai-rerank-large-v2",
             query="async test",
             input=["Async document 1", "Async document 2"],
             top_k=10,
