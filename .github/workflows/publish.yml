@@ -6,15 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to publish to'
+        description: "Environment to publish to"
         required: true
-        default: 'test'
+        default: "test"
         type: choice
         options:
           - test
           - production
       skip_tests:
-        description: 'Skip tests'
+        description: "Skip tests"
         required: false
         default: false
         type: boolean
@@ -25,99 +25,105 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
-    
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .[dev]
-    
-    - name: Run unit tests
-      run: python run_tests.py unit
-    
-    - name: Run integration tests
-      if: github.event_name == 'release'
-      env:
-        MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
-      run: python run_tests.py integration
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run unit tests
+        run: python run_tests.py unit
+
+      - name: Run integration tests
+        if: github.event_name == 'release'
+        env:
+          MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
+        run: python run_tests.py integration
 
   build:
     runs-on: ubuntu-latest
     needs: test
     if: always() && (needs.test.result == 'success' || inputs.skip_tests)
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    
-    - name: Build package
-      run: python -m build
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   publish-test:
     runs-on: ubuntu-latest
     needs: build
     if: github.event.inputs.environment == 'test'
     environment: test
-    
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist/
-    
-    - name: Modify package name for test
-      run: |
-        # Create a modified version for test PyPI
-        sed -i 's/name = "mixedbread-ai-haystack"/name = "mixedbread-ai-haystack-test"/' pyproject.toml
-        python -m pip install --upgrade pip build
-        python -m build
-    
-    - name: Publish to Test PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
-        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Modify package name for test
+        run: |
+          # Create a modified version for test PyPI
+          sed -i 's/name = "mixedbread-ai-haystack"/name = "mixedbread-ai-haystack-test"/' pyproject.toml
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
 
   publish-production:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'release' || github.event.inputs.environment == 'production'
     environment: production
-    
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist/
-    
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
