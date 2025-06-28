@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mixedbread-ai-haystack"
-version = "2.1.4"
+version = "2.1.2"
 description = "The official Mixedbread AI integration for Haystack"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -27,7 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "haystack-ai>=2.0.0",
-    "mixedbread-ai>=0.8.1",
+    "mixedbread>=0.13.1",
     "pydantic>=2.0.0"
 ]
 
