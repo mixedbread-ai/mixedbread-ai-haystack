@@ -81,9 +81,6 @@ jobs:
     needs: build
     if: github.event.inputs.environment == 'test'
     environment: test
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -105,16 +102,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
+          password: ${{ secrets.PYPI_TEST_TOKEN }}
 
   publish-production:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'release' || github.event.inputs.environment == 'production'
     environment: production
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
       - name: Download build artifacts
