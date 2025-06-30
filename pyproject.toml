@@ -4,15 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mixedbread-ai-haystack"
-version = "2.1.2"
+version = "2.1.3"
 description = "The official Mixedbread AI integration for Haystack"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 keywords = ["haystack", "mixedbread", "embedding", "reranking", "parsing", "nlp", "llm", "mixedbread-ai"]
-authors = [{ name = "Mixedbread AI", email = "support@mixedbread.ai" }]
+authors = [{ name = "Mixedbread AI", email = "support@mixedbread.com" }]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
@@ -32,9 +31,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://mixedbread.ai"
-Documentation = "https://docs.mixedbread.ai"
-Repository = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
+Homepage = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
+Documentation = "https://www.mixedbread.com/api-reference/integrations/haystack"
 Issues = "https://github.com/mixedbread-ai/mixedbread-ai-haystack/issues"
 Source = "https://github.com/mixedbread-ai/mixedbread-ai-haystack"
 
