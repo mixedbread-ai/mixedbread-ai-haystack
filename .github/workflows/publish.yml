@@ -79,24 +79,39 @@ jobs:
   publish-test:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event.inputs.environment == 'test'
-    environment: test
+    if: |
+      always() && 
+      needs.build.result == 'success' && 
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'test')
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/mixedbread-ai-haystack-test
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          name: dist
-          path: dist/
+          python-version: "3.11"
 
-      - name: Modify package name for test
+      - name: Install build dependencies
         run: |
-          # Create a modified version for test PyPI
-          sed -i 's/name = "mixedbread-ai-haystack"/name = "mixedbread-ai-haystack-test"/' pyproject.toml
-          python -m pip install --upgrade pip build
-          python -m build
+          python -m pip install --upgrade pip
+          pip install build toml
+
+      - name: Modify package name for Test PyPI
+        run: |
+          python -c "
+          import toml
+          data = toml.load('pyproject.toml')
+          data['project']['name'] = 'mixedbread-ai-haystack-test'
+          with open('pyproject.toml', 'w') as f:
+              toml.dump(data, f)
+          "
+
+      - name: Build package for Test PyPI
+        run: python -m build
 
       - name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -104,12 +119,20 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           password: ${{ secrets.PYPI_TEST_TOKEN }}
           attestations: false
+          print-hash: false
+          verbose: true
 
   publish-production:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'release' || github.event.inputs.environment == 'production'
-    environment: production
+    if: |
+      always() && 
+      needs.build.result == 'success' && 
+      (github.event_name == 'release' || 
+       (github.event_name == 'workflow_dispatch' && inputs.environment == 'production'))
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mixedbread-ai-haystack
 
     steps:
       - name: Download build artifacts
@@ -123,3 +146,5 @@ jobs:
         with:
           password: ${{ secrets.PYPI_TOKEN }}
           attestations: false
+          print-hash: false
+          verbose: true
